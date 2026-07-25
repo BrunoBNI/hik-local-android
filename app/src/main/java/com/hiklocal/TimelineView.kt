@@ -42,8 +42,8 @@ class TimelineView @JvmOverloads constructor(
     private val scaleDetector = ScaleGestureDetector(context,
         object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
             override fun onScale(detector: ScaleGestureDetector): Boolean {
-                val focusMs = viewStartMs + (detector.focusX / width) * viewSpanMs
-                zoomTo(viewSpanMs / detector.scaleFactor, focusMs)
+                val focusMs = viewStartMs + ((detector.focusX / width) * viewSpanMs).toLong()
+                zoomTo((viewSpanMs / detector.scaleFactor).toLong(), focusMs)
                 return true
             }
         })
@@ -100,7 +100,7 @@ class TimelineView @JvmOverloads constructor(
     }
 
     fun zoomBy(factor: Float) {
-        zoomTo(viewSpanMs / factor, viewStartMs + viewSpanMs / 2)
+        zoomTo((viewSpanMs / factor).toLong(), viewStartMs + viewSpanMs / 2)
     }
 
     private fun zoomTo(newSpan: Long, focusMs: Long) {

@@ -262,7 +262,7 @@ class PlaybackActivity : AppCompatActivity() {
      * n'est pas un blocage, juste la limite du débit disponible.
      */
     private fun changeSpeed(dir: Int) {
-        val i = SPEEDS.indexOf(speed).let { if (it < 0) 2 else it }
+        val i = SPEEDS.toList().indexOf(speed).let { if (it < 0) 2 else it }
         val next = SPEEDS[(i + dir).coerceIn(0, SPEEDS.size - 1)]
         if (next == speed) return
         // On resynchronise la base de temps du curseur sur la position actuelle
