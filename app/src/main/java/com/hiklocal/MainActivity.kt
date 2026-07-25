@@ -61,6 +61,11 @@ class MainActivity : AppCompatActivity() {
 
         setupPtz()
         loadCameras()
+
+        NavBar.setup(
+            this, NavBar.Tab.LIVE, b.topbar.overflowButton,
+            b.topbar.tabDirect, b.topbar.tabMosaic, b.topbar.tabPlayback, b.topbar.tabCaptures
+        )
     }
 
     // ------------------------------------------------------------ Caméras

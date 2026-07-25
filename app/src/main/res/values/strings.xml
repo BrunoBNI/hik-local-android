@@ -28,4 +28,20 @@
     <string name="err_no_camera">Aucune caméra active sur cet appareil.</string>
     <string name="err_no_video">Pas d\'enregistrement lisible à cette heure.</string>
     <string name="ptz_unsupported">Cette caméra ne pivote pas.</string>
+
+    <string name="tab_live">🎥 Direct</string>
+    <string name="tab_mosaic">⊞ Mosaïque</string>
+    <string name="tab_playback">🕐 Lecture</string>
+    <string name="tab_captures">📁 Captures</string>
+
+    <string name="menu_native">Interface native ↗</string>
+    <string name="menu_logout">Déconnexion</string>
+
+    <string name="mosaic_off_hint">Les caméras désactivées ici n\'utilisent pas de bande passante.</string>
+    <string name="mosaic_all_on">Tout activer</string>
+    <string name="mosaic_all_off">Tout couper</string>
+    <string name="mosaic_note">Mosaïque en photos actualisées automatiquement (pas en vidéo continue), pour préserver la batterie.</string>
+
+    <string name="captures_empty">Aucune photo prise depuis l\'application pour l\'instant.</string>
+    <string name="captures_permission">Autorisez l\'accès aux photos pour voir vos captures.</string>
 </resources>

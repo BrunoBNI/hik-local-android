@@ -38,6 +38,15 @@ class Prefs(context: Context) {
         get() = sp.getInt("stream", 1)
         set(v) = sp.edit().putInt("stream", v).apply()
 
+    /** Caméras désactivées dans la mosaïque : n'utilisent plus de bande passante. */
+    var mosaicOff: Set<Int>
+        get() = sp.getString("mosaicOff", "")
+            .orEmpty()
+            .split(",")
+            .mapNotNull { it.trim().toIntOrNull() }
+            .toSet()
+        set(v) = sp.edit().putString("mosaicOff", v.joinToString(",")).apply()
+
     fun clearCredentials() {
         sp.edit().remove("password").putBoolean("remember", false).apply()
     }

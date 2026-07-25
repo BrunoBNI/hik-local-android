@@ -9,6 +9,7 @@ import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
@@ -19,13 +20,15 @@ import java.util.Calendar
  * Relecture des enregistrements.
  *
  * Le flux RTSP d'archive ne se déplace pas : pour changer d'instant, on
- * relance simplement la lecture à la nouvelle heure. C'est aussi ce que fait
- * la version PC de ce service.
+ * relance simplement la lecture à la nouvelle heure. La pause, en revanche,
+ * n'exige pas de relancer le flux — ExoPlayer sait mettre n'importe quelle
+ * source en attente.
  */
 class PlaybackActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CAM = "cam"
+        val SPEEDS = floatArrayOf(0.25f, 0.5f, 1f, 2f, 4f, 8f, 16f)
     }
 
     private lateinit var b: ActivityPlaybackBinding
@@ -37,6 +40,10 @@ class PlaybackActivity : AppCompatActivity() {
     private var month = 0      // 0-11, convention Calendar
     private var day = 0
     private var minuteOfDay = 0
+
+    private var muted = true
+    private var speed = 1f
+    private var paused = false
 
     private val api: HikApi? get() = Session.api
 
@@ -58,6 +65,11 @@ class PlaybackActivity : AppCompatActivity() {
         setupCameras()
         setupControls()
         updateLabels()
+
+        NavBar.setup(
+            this, NavBar.Tab.PLAYBACK, b.topbar.overflowButton,
+            b.topbar.tabDirect, b.topbar.tabMosaic, b.topbar.tabPlayback, b.topbar.tabCaptures
+        )
     }
 
     private fun setupCameras() {
@@ -90,6 +102,10 @@ class PlaybackActivity : AppCompatActivity() {
         b.back1.setOnClickListener { shift(-1) }
         b.fwd1.setOnClickListener { shift(1) }
         b.fwd5.setOnClickListener { shift(5) }
+        b.pauseButton.setOnClickListener { togglePause() }
+        b.pbSoundButton.setOnClickListener { toggleSound() }
+        b.speedDown.setOnClickListener { changeSpeed(-1) }
+        b.speedUp.setOnClickListener { changeSpeed(1) }
 
         b.timeSeek.progress = minuteOfDay
         b.timeSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -146,12 +162,16 @@ class PlaybackActivity : AppCompatActivity() {
 
     private fun play(url: String) {
         stop()
+        paused = false
+        b.pauseButton.text = "⏸"
         b.statusText.visibility = View.GONE
         b.loading.visibility = View.VISIBLE
 
         val exo = ExoPlayer.Builder(this).build()
         player = exo
         b.playerView.player = exo
+        exo.volume = if (muted) 0f else 1f
+        exo.playbackParameters = PlaybackParameters(speed)
 
         val source = RtspMediaSource.Factory()
             .setForceUseRtpTcp(true)
@@ -172,6 +192,39 @@ class PlaybackActivity : AppCompatActivity() {
         exo.setMediaSource(source)
         exo.prepare()
         exo.playWhenReady = true
+    }
+
+    // -------------------------------------------------- Pause / son / vitesse
+
+    private fun togglePause() {
+        val p = player ?: run { playFromCurrent(); return }
+        paused = !paused
+        p.playWhenReady = !paused
+        b.pauseButton.text = if (paused) "▶" else "⏸"
+    }
+
+    private fun toggleSound() {
+        muted = !muted
+        player?.volume = if (muted) 0f else 1f
+        b.pbSoundButton.setImageResource(
+            if (muted) android.R.drawable.ic_lock_silent_mode
+            else android.R.drawable.ic_lock_silent_mode_off
+        )
+    }
+
+    /**
+     * La vitesse change le rythme de lecture côté téléphone, mais l'appareil
+     * envoie les images à son propre rythme : au-delà de ×4, l'image peut
+     * marquer des pauses le temps que les données suivantes arrivent — ce
+     * n'est pas un blocage, juste la limite du débit disponible.
+     */
+    private fun changeSpeed(dir: Int) {
+        val i = SPEEDS.indexOf(speed).let { if (it < 0) 2 else it }
+        val next = SPEEDS[(i + dir).coerceIn(0, SPEEDS.size - 1)]
+        if (next == speed) return
+        speed = next
+        b.speedLabel.text = "×" + (if (speed < 1f) speed.toString() else speed.toInt().toString())
+        player?.playbackParameters = PlaybackParameters(speed)
     }
 
     private fun showStatus(message: String) {

@@ -4,13 +4,18 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!--
-      Avant Android 10, enregistrer une photo dans la galerie exige cette
-      permission. À partir d'Android 10, le stockage cloisonné la rend
-      inutile : elle est donc limitée aux anciennes versions.
+      Avant Android 10, enregistrer ou lire une photo dans la galerie exige
+      ces permissions. À partir d'Android 10, le stockage cloisonné les rend
+      inutiles pour les fichiers de l'application elle-même.
     -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!-- Android 13 et plus : permission dédiée aux images, remplace la précédente. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
         android:allowBackup="false"
@@ -33,11 +38,25 @@
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
-            android:exported="false" />
+            android:exported="false"
+            android:launchMode="singleTop" />
 
         <activity
             android:name=".PlaybackActivity"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
-            android:exported="false" />
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <activity
+            android:name=".MosaicActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <activity
+            android:name=".CapturesActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:exported="false"
+            android:launchMode="singleTop" />
     </application>
 </manifest>
