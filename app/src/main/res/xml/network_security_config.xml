@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Depuis Android 9, le trafic HTTP non chiffré est bloqué par défaut.
+
+  Un DVR sur réseau local n'a ni nom de domaine ni certificat TLS, et son
+  adresse IP peut changer (bail DHCP). Or cette configuration compare des
+  noms de domaine : on ne peut donc pas y déclarer une plage d'adresses
+  privées. Le clair est autorisé globalement, ce qui reste acceptable ici :
+  l'application ne contacte que l'appareil dont l'utilisateur saisit
+  lui-même l'adresse, sur son propre réseau.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HikLocal</string>
+
+    <string name="login_title">Service local</string>
+    <string name="login_host">Adresse de l\'appareil</string>
+    <string name="login_user">Nom d\'utilisateur</string>
+    <string name="login_password">Mot de passe</string>
+    <string name="login_remember">Se souvenir de mes identifiants</string>
+    <string name="login_action">Se connecter</string>
+    <string name="login_checking">Connexion…</string>
+    <string name="login_footer">Les identifiants restent sur ce téléphone.</string>
+
+    <string name="live_snapshot">Photo</string>
+    <string name="live_playback">Lecture</string>
+    <string name="live_prev">Caméra précédente</string>
+    <string name="live_next">Caméra suivante</string>
+
+    <string name="pb_play">Lire</string>
+    <string name="pb_back5">−5 min</string>
+    <string name="pb_back1">−1 min</string>
+    <string name="pb_fwd1">+1 min</string>
+    <string name="pb_fwd5">+5 min</string>
+    <string name="pb_hint">Faites glisser la frise pour choisir l\'heure, puis lancez la lecture.</string>
+
+    <string name="err_unreachable">Appareil injoignable. Vérifiez l\'adresse et le réseau Wi-Fi.</string>
+    <string name="err_credentials">Nom d\'utilisateur ou mot de passe incorrect.</string>
+    <string name="err_no_camera">Aucune caméra active sur cet appareil.</string>
+    <string name="err_no_video">Pas d\'enregistrement lisible à cette heure.</string>
+    <string name="ptz_unsupported">Cette caméra ne pivote pas.</string>
+</resources>

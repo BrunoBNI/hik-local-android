@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Objectif de caméra : même motif que l'interface web du service local. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#0D1116"
+        android:pathData="M54,54 m-27,0 a27,27 0 1,0 54,0 a27,27 0 1,0 -54,0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#E2231A"
+        android:strokeWidth="3.2"
+        android:pathData="M54,54 m-26,0 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0" />
+    <path
+        android:fillColor="#1B222B"
+        android:pathData="M54,54 m-19,0 a19,19 0 1,0 38,0 a19,19 0 1,0 -38,0" />
+    <path
+        android:fillColor="#E2231A"
+        android:fillAlpha="0.9"
+        android:pathData="M54,35 A19,19 0 0,1 70.5,44.5 L54,54 Z" />
+    <path
+        android:fillColor="#2B6CB0"
+        android:fillAlpha="0.8"
+        android:pathData="M70.5,63.5 A19,19 0 0,1 54,73 L54,54 Z" />
+    <path
+        android:fillColor="#3B8F5E"
+        android:fillAlpha="0.65"
+        android:pathData="M37.5,44.5 A19,19 0 0,1 54,35 L54,54 Z" />
+    <path
+        android:fillColor="#05070A"
+        android:pathData="M54,54 m-7.5,0 a7.5,7.5 0 1,0 15,0 a7.5,7.5 0 1,0 -15,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.5"
+        android:pathData="M48.5,48.5 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+</vector>
