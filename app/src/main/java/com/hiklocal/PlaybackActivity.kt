@@ -1,20 +1,39 @@
 package com.hiklocal
 
+import android.Manifest
 import android.app.DatePickerDialog
+import android.content.ContentValues
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
+import android.view.SurfaceView
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.SeekBar
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import com.hiklocal.databinding.ActivityPlaybackBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /**
  * Relecture des enregistrements.
@@ -23,6 +42,10 @@ import java.util.Calendar
  * relance simplement la lecture à la nouvelle heure. La pause, en revanche,
  * n'exige pas de relancer le flux — ExoPlayer sait mettre n'importe quelle
  * source en attente.
+ *
+ * La frise ne présente pas les segments réellement enregistrés (voir la note
+ * dans TimelineView) : elle reste utilisable pour naviguer, juste sans ce
+ * repère visuel supplémentaire.
  */
 class PlaybackActivity : AppCompatActivity() {
 
@@ -44,6 +67,15 @@ class PlaybackActivity : AppCompatActivity() {
     private var muted = true
     private var speed = 1f
     private var paused = false
+
+    private var videoWidth = 0
+    private var videoHeight = 0
+    private var recorder: VideoRecorder? = null
+
+    private val cursorHandler = Handler(Looper.getMainLooper())
+    private var cursorRunnable: Runnable? = null
+    private var playbackStartWallMs = 0L
+    private var playbackStartMinute = 0
 
     private val api: HikApi? get() = Session.api
 
@@ -106,23 +138,24 @@ class PlaybackActivity : AppCompatActivity() {
         b.pbSoundButton.setOnClickListener { toggleSound() }
         b.speedDown.setOnClickListener { changeSpeed(-1) }
         b.speedUp.setOnClickListener { changeSpeed(1) }
+        b.pbRecordButton.setOnClickListener { toggleRecording() }
 
-        b.timeSeek.progress = minuteOfDay
-        b.timeSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    minuteOfDay = progress
-                    updateLabels()
-                }
+        b.tlZoomIn.setOnClickListener { b.timeline.zoomBy(1.6f) }
+        b.tlZoomOut.setOnClickListener { b.timeline.zoomBy(1 / 1.6f) }
+        b.tlReset.setOnClickListener { b.timeline.resetFullDay() }
+
+        b.timeline.onSeek = TimelineView.OnSeekListener { minute ->
+            minuteOfDay = minute
+            updateLabels()
+            playFromCurrent()
+        }
+        b.timeline.onScrubPreview = { minute ->
+            if (minute != null) {
+                b.timeLabel.text = "%02d:%02d".format(minute / 60, minute % 60)
+            } else {
+                updateLabels()
             }
-
-            override fun onStartTrackingTouch(sb: SeekBar?) {}
-
-            /** On ne relance la lecture qu'au relâchement, pas à chaque pixel. */
-            override fun onStopTrackingTouch(sb: SeekBar?) {
-                playFromCurrent()
-            }
-        })
+        }
     }
 
     private fun pickDate() {
@@ -135,7 +168,6 @@ class PlaybackActivity : AppCompatActivity() {
 
     private fun shift(minutes: Int) {
         minuteOfDay = (minuteOfDay + minutes).coerceIn(0, 1439)
-        b.timeSeek.progress = minuteOfDay
         updateLabels()
         playFromCurrent()
     }
@@ -155,6 +187,7 @@ class PlaybackActivity : AppCompatActivity() {
         "%04d%02d%02dT%02d%02d00Z".format(year, month + 1, day, minutes / 60, minutes % 60)
 
     private fun playFromCurrent() {
+        if (recorder?.isRecording() == true) stopRecording()   // on ne change pas d'instant en pleine capture
         val endOfDay = 1439
         val url = api!!.playbackUrl(currentCam, stamp(minuteOfDay), stamp(endOfDay))
         play(url)
@@ -187,11 +220,20 @@ class PlaybackActivity : AppCompatActivity() {
             override fun onPlayerError(error: PlaybackException) {
                 showStatus(getString(R.string.err_no_video))
             }
+
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                videoWidth = videoSize.width
+                videoHeight = videoSize.height
+            }
         })
 
         exo.setMediaSource(source)
         exo.prepare()
         exo.playWhenReady = true
+
+        playbackStartWallMs = System.currentTimeMillis()
+        playbackStartMinute = minuteOfDay
+        startCursor()
     }
 
     // -------------------------------------------------- Pause / son / vitesse
@@ -201,6 +243,7 @@ class PlaybackActivity : AppCompatActivity() {
         paused = !paused
         p.playWhenReady = !paused
         b.pauseButton.text = if (paused) "▶" else "⏸"
+        if (paused) stopCursor() else startCursor()
     }
 
     private fun toggleSound() {
@@ -222,10 +265,137 @@ class PlaybackActivity : AppCompatActivity() {
         val i = SPEEDS.indexOf(speed).let { if (it < 0) 2 else it }
         val next = SPEEDS[(i + dir).coerceIn(0, SPEEDS.size - 1)]
         if (next == speed) return
+        // On resynchronise la base de temps du curseur sur la position actuelle
+        // avant de changer de vitesse, sinon il saute en avant ou en arrière.
+        playbackStartMinute = currentEstimatedMinute()
+        playbackStartWallMs = System.currentTimeMillis()
         speed = next
         b.speedLabel.text = "×" + (if (speed < 1f) speed.toString() else speed.toInt().toString())
         player?.playbackParameters = PlaybackParameters(speed)
     }
+
+    // ------------------------------------------------------- Curseur (frise)
+
+    private fun currentEstimatedMinute(): Int {
+        if (paused) return minuteOfDay
+        val elapsedS = (System.currentTimeMillis() - playbackStartWallMs) / 1000.0 * speed
+        return (playbackStartMinute + (elapsedS / 60.0)).toInt().coerceIn(0, 1439)
+    }
+
+    private fun startCursor() {
+        stopCursor()
+        val r = object : Runnable {
+            override fun run() {
+                val m = currentEstimatedMinute()
+                minuteOfDay = m
+                b.timeline.setCursor(m)
+                updateLabels()
+                cursorHandler.postDelayed(this, 1000)
+            }
+        }
+        cursorRunnable = r
+        cursorHandler.post(r)
+    }
+
+    private fun stopCursor() {
+        cursorRunnable?.let { cursorHandler.removeCallbacks(it) }
+        cursorRunnable = null
+    }
+
+    // --------------------------------------------------- Enregistrement vidéo
+
+    private fun toggleRecording() {
+        val rec = recorder
+        if (rec != null && rec.isRecording()) {
+            stopRecording()
+            return
+        }
+        val surfaceView = b.playerView.videoSurfaceView as? SurfaceView
+        if (surfaceView == null || videoWidth <= 0 || videoHeight <= 0 || player == null) {
+            Toast.makeText(this, "Vidéo pas encore prête", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val newRecorder = VideoRecorder(currentCam)
+        val started = newRecorder.start(cacheDir, surfaceView, videoWidth, videoHeight) { success, file, message ->
+            onRecordingStopped(success, file, message)
+        }
+        if (started) {
+            recorder = newRecorder
+            b.pbRecordButton.setImageResource(android.R.drawable.presence_video_busy)
+        } else {
+            Toast.makeText(this, "Impossible de démarrer l'enregistrement", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun stopRecording() {
+        recorder?.stop()
+    }
+
+    private fun onRecordingStopped(success: Boolean, file: File?, message: String) {
+        b.pbRecordButton.setImageResource(android.R.drawable.presence_video_online)
+        recorder = null
+        if (!success || file == null) {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            return
+        }
+        withStoragePermission { saveVideoToGallery(file) }
+    }
+
+    private var pendingAfterPermission: (() -> Unit)? = null
+    private val askWritePermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) pendingAfterPermission?.invoke()
+            else Toast.makeText(this, "Permission refusée", Toast.LENGTH_SHORT).show()
+            pendingAfterPermission = null
+        }
+
+    private fun withStoragePermission(action: () -> Unit) {
+        val needsPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            pendingAfterPermission = action
+            askWritePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        } else {
+            action()
+        }
+    }
+
+    private fun saveVideoToGallery(file: File) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            var savedName: String? = null
+            try {
+                val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                val name = "hik_${currentCam}_playback_$stamp.mp4"
+                val values = ContentValues().apply {
+                    put(MediaStore.Video.Media.DISPLAY_NAME, name)
+                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+                }
+                val uri = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+                if (uri != null) {
+                    contentResolver.openOutputStream(uri)?.use { out ->
+                        file.inputStream().use { it.copyTo(out) }
+                    }
+                    savedName = name
+                }
+            } catch (e: Exception) {
+                savedName = null
+            } finally {
+                file.delete()
+            }
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@PlaybackActivity,
+                    if (savedName != null) "Vidéo enregistrée : $savedName"
+                    else "Enregistrement de la vidéo impossible",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    // ------------------------------------------------------------ Arrêt
 
     private fun showStatus(message: String) {
         b.loading.visibility = View.GONE
@@ -234,6 +404,9 @@ class PlaybackActivity : AppCompatActivity() {
     }
 
     private fun stop() {
+        if (recorder?.isRecording() == true) stopRecording()
+        stopCursor()
+        b.timeline.setCursor(null)
         player?.release()
         player = null
         b.playerView.player = null

@@ -11,6 +11,7 @@
         layout="@layout/topbar" />
 
     <LinearLayout
+        android:id="@+id/headerRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/panel"
@@ -128,89 +129,72 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/live_snapshot"
                 android:src="@android:drawable/ic_menu_crop" />
+
+            <ImageButton
+                android:id="@+id/recordButton"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/live_record"
+                android:src="@android:drawable/presence_video_online" />
         </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="8dp"
+            android:background="#A6000000"
+            android:orientation="horizontal"
+            android:padding="2dp">
+
+            <ImageButton
+                android:id="@+id/zoomInButton"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/live_zoom_in"
+                android:src="@android:drawable/ic_menu_zoom" />
+
+            <ImageButton
+                android:id="@+id/zoomOutButton"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/live_zoom_out"
+                android:src="@android:drawable/ic_menu_zoom" />
+
+            <ImageButton
+                android:id="@+id/zoomResetButton"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/live_zoom_reset"
+                android:src="@android:drawable/ic_menu_revert" />
+
+            <ImageButton
+                android:id="@+id/fullscreenButton"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/live_fullscreen"
+                android:src="@android:drawable/ic_menu_view" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/recIndicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="8dp"
+            android:background="#CCE2231A"
+            android:paddingStart="8dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp"
+            android:text="@string/live_recording"
+            android:textColor="@color/text"
+            android:textSize="12sp"
+            android:visibility="gone" />
     </FrameLayout>
-
-    <GridLayout
-        android:id="@+id/ptzPad"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="14dp"
-        android:columnCount="3"
-        android:rowCount="3">
-
-        <Space
-            android:layout_width="58dp"
-            android:layout_height="48dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/ptzUp"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="58dp"
-            android:layout_height="48dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:text="▲"
-            android:textColor="@color/text" />
-
-        <Space
-            android:layout_width="58dp"
-            android:layout_height="48dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/ptzLeft"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="58dp"
-            android:layout_height="48dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:text="◀"
-            android:textColor="@color/text" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/ptzZoomIn"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="58dp"
-            android:layout_height="48dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:text="+"
-            android:textColor="@color/text" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/ptzRight"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="58dp"
-            android:layout_height="48dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:text="▶"
-            android:textColor="@color/text" />
-
-        <Space
-            android:layout_width="58dp"
-            android:layout_height="48dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/ptzDown"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="58dp"
-            android:layout_height="48dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:text="▼"
-            android:textColor="@color/text" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/ptzZoomOut"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="58dp"
-            android:layout_height="48dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:text="−"
-            android:textColor="@color/text" />
-    </GridLayout>
 </LinearLayout>

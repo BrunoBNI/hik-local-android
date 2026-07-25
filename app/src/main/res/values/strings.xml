@@ -15,6 +15,12 @@
     <string name="live_playback">Lecture</string>
     <string name="live_prev">Caméra précédente</string>
     <string name="live_next">Caméra suivante</string>
+    <string name="live_zoom_in">Zoomer</string>
+    <string name="live_zoom_out">Dézoomer</string>
+    <string name="live_zoom_reset">Vue entière</string>
+    <string name="live_fullscreen">Plein écran</string>
+    <string name="live_record">Enregistrer</string>
+    <string name="live_recording">● Enregistrement…</string>
 
     <string name="pb_play">Lire</string>
     <string name="pb_back5">−5 min</string>
