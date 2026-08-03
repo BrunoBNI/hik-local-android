@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<!--
+  Vignette volontairement sobre : juste la petite fenêtre vidéo et son nom.
+  Pas de badge flottant, pas de dégradé, pas d'icônes superposées — le clic
+  sur l'image bascule directement vers la caméra en plein écran (Direct).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="0dp"
     android:layout_height="wrap_content"
     android:layout_columnWeight="1"
-    android:layout_margin="4dp"
-    app:cardBackgroundColor="@color/black"
-    app:cardCornerRadius="10dp"
-    app:cardElevation="2dp">
+    android:layout_margin="3dp"
+    android:orientation="vertical">
 
     <FrameLayout
         android:id="@+id/tileFrame"
         android:layout_width="match_parent"
-        android:layout_height="0dp">
+        android:layout_height="0dp"
+        android:background="@color/black">
 
         <ImageView
             android:id="@+id/tileImage"
@@ -23,8 +26,8 @@
 
         <ProgressBar
             android:id="@+id/tileLoading"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
             android:layout_gravity="center"
             android:indeterminateTint="@color/accent" />
 
@@ -36,43 +39,36 @@
             android:gravity="center"
             android:text="⏻"
             android:textColor="@color/text_dim"
-            android:textSize="22sp"
+            android:textSize="20sp"
             android:visibility="gone" />
+    </FrameLayout>
 
-        <!-- Dégradé + nom incrusté en bas, façon vignette de caméra classique. -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:layout_gravity="bottom"
-            android:background="@drawable/mosaic_scrim" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <TextView
             android:id="@+id/tileLabel"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom|start"
+            android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:padding="8dp"
-            android:shadowColor="#FF000000"
-            android:shadowDx="0"
-            android:shadowDy="1"
-            android:shadowRadius="2"
-            android:textColor="@color/text"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+            android:paddingStart="2dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:textColor="@color/text_dim"
+            android:textSize="11sp" />
 
-        <!-- Badge d'action : coupe/réactive le flux, posé sur l'image comme
-             un indicateur d'état plutôt qu'un bouton dans une rangée à part. -->
         <ImageButton
             android:id="@+id/tileToggle"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_gravity="top|end"
-            android:layout_margin="6dp"
-            android:background="@drawable/mosaic_badge_bg"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/mosaic_toggle_desc"
-            android:padding="5dp"
+            android:padding="4dp"
             android:src="@android:drawable/ic_lock_power_off" />
-    </FrameLayout>
-</androidx.cardview.widget.CardView>
+    </LinearLayout>
+</LinearLayout>
