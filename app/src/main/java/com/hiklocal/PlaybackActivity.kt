@@ -218,7 +218,19 @@ class PlaybackActivity : AppCompatActivity() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                showStatus(getString(R.string.err_no_video))
+                val detail = error.cause?.message ?: error.message ?: ""
+                // Même limite que le direct : la bibliothèque RTSP d'Android
+                // refuse la description envoyée par certaines caméras. Le
+                // distinguer d'une absence réelle d'enregistrement évite de
+                // chercher au mauvais endroit (mauvaise date, mauvaise heure…).
+                if (detail.contains("fmtp", ignoreCase = true) ||
+                    detail.contains("SDP", ignoreCase = true) ||
+                    detail.contains("IllegalArgument", ignoreCase = true)
+                ) {
+                    showStatus(getString(R.string.err_playback_stream) + "\n" + detail)
+                } else {
+                    showStatus(getString(R.string.err_no_video))
+                }
             }
 
             override fun onVideoSizeChanged(videoSize: VideoSize) {
