@@ -11,8 +11,19 @@ android {
         applicationId = "com.hiklocal"
         minSdk = 26          // Android 8.0 Oreo
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
+    }
+
+    // Nomme l'APK produit CAMERA_DVR_v1.1.apk plutôt que app-debug.apk :
+    // le fichier reste identifiable une fois téléchargé, et le suffixe de
+    // version évite de confondre deux compilations successives.
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            output.outputFileName = "CAMERA_DVR_v${variant.versionName}.apk"
+        }
     }
 
     buildFeatures {
