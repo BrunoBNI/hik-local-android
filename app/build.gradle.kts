@@ -11,8 +11,15 @@ android {
         applicationId = "com.hiklocal"
         minSdk = 26          // Android 8.0 Oreo
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
+
+        // LibVLC embarque des bibliothèques natives par architecture. On se
+        // limite aux deux qui couvrent la quasi-totalité des téléphones, pour
+        // éviter un fichier d'installation démesuré.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     // Nomme l'APK produit CAMERA_DVR_v1.1.apk plutôt que app-debug.apk :
@@ -72,4 +79,10 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("androidx.media3:media3-exoplayer-rtsp:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
+
+    // LibVLC : le moteur de VLC, fondé sur ffmpeg — exactement ce qui permet à
+    // la version PC de lire ces flux. Contrairement au lecteur RTSP d'Android,
+    // il tolère les descriptions SDP non strictement conformes envoyées par
+    // ces caméras ("missing attribute fmtp" / "SDP format error").
+    implementation("org.videolan.android:libvlc-all:3.6.0")
 }
