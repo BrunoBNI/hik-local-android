@@ -16,6 +16,7 @@ import android.view.SurfaceView
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -191,6 +192,15 @@ class MainActivity : AppCompatActivity() {
 
     /** 0 = 16:9 forcé, 1 = 4:3 forcé, 2 = format natif de la caméra. */
     private fun applyRatio(mode: Int) {
+        // En mode image, c'est l'ImageView qui affiche la vidéo : elle doit
+        // suivre le même format, sinon le réglage n'a aucun effet sur les
+        // caméras basculées en repli (c'est-à-dire la majorité ici).
+        b.frameImage.scaleType = if (mode == 2) {
+            ImageView.ScaleType.FIT_CENTER      // format natif : on respecte l'image
+        } else {
+            ImageView.ScaleType.FIT_XY          // format imposé : on remplit le cadre
+        }
+
         b.videoFrame.post {
             val w = b.videoFrame.width
             if (w <= 0) return@post
