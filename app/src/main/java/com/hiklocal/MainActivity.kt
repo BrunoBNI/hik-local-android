@@ -91,6 +91,7 @@ class MainActivity : AppCompatActivity() {
         setupRatioSpinner()
         setupZoom()
         loadCameras()
+        applyLayout()
 
         NavBar.setup(
             this, NavBar.Tab.LIVE, b.topbar.overflowButton,
@@ -141,6 +142,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stepCamera(delta: Int) {
+        showArrows()
         if (cameras.isEmpty()) return
         val i = cameras.indexOfFirst { it.id == currentCam }
         val next = ((if (i < 0) 0 else i) + delta + cameras.size) % cameras.size
@@ -669,6 +671,7 @@ class MainActivity : AppCompatActivity() {
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     lastX = event.x; lastY = event.y
+                    showArrows()     // un contact rappelle les commandes
                 }
                 MotionEvent.ACTION_MOVE -> {
                     if (scale > 1.02f && event.pointerCount == 1) {
@@ -729,31 +732,75 @@ class MainActivity : AppCompatActivity() {
 
     private var isFullscreenOn = false
 
-    private fun toggleFullscreen() {
-        isFullscreenOn = !isFullscreenOn
+    /**
+     * En paysage, la vidéo prend tout l'écran et l'interface s'efface : c'est
+     * l'orientation qu'on choisit justement pour voir grand. En portrait, elle
+     * garde son cadre au format choisi, sous les menus.
+     */
+    private fun applyLayout() {
+        val landscape = resources.configuration.orientation ==
+            android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val immersive = landscape || isFullscreenOn
+
+        b.topbar.root.visibility = if (immersive) View.GONE else View.VISIBLE
+        b.headerRow.visibility = if (immersive) View.GONE else View.VISIBLE
+        b.toolbarRow.visibility = if (immersive) View.GONE else View.VISIBLE
+
         val controller = WindowInsetsControllerCompat(window, window.decorView)
-        if (isFullscreenOn) {
-            requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        if (immersive) {
             WindowCompat.setDecorFitsSystemWindows(window, false)
             controller.hide(WindowInsetsCompat.Type.systemBars())
             controller.systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            b.topbar.root.visibility = View.GONE
-            b.headerRow.visibility = View.GONE
-            b.toolbarRow.visibility = View.GONE
-            // En plein écran la vidéo reprend toute la place disponible.
             (b.videoFrame.layoutParams as android.widget.LinearLayout.LayoutParams).apply {
                 height = 0; weight = 1f
             }.also { b.videoFrame.layoutParams = it }
+            applyVlcAspect()
         } else {
-            requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             WindowCompat.setDecorFitsSystemWindows(window, true)
             controller.show(WindowInsetsCompat.Type.systemBars())
-            b.topbar.root.visibility = View.VISIBLE
-            b.headerRow.visibility = View.VISIBLE
-            b.toolbarRow.visibility = View.VISIBLE
-            applyRatio(prefs.ratio)   // rétablit le format choisi
+            applyRatio(prefs.ratio)   // rétablit le cadre au format choisi
         }
+        showArrows()                  // les flèches réapparaissent au changement
+    }
+
+    private fun toggleFullscreen() {
+        isFullscreenOn = !isFullscreenOn
+        applyLayout()
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // L'activité n'est pas recréée à la rotation (voir configChanges au
+        // manifeste) : c'est ici qu'on réajuste la disposition.
+        applyLayout()
+    }
+
+    // ------------------------------------------- Flèches à masquage auto
+
+    private val arrowsHandler = Handler(Looper.getMainLooper())
+    private var hideArrowsTask: Runnable? = null
+
+    /**
+     * Les flèches de changement de caméra s'effacent après quelques secondes
+     * pour ne pas masquer l'image, et reviennent au moindre contact. C'est le
+     * comportement attendu d'un lecteur vidéo.
+     */
+    private fun showArrows() {
+        hideArrowsTask?.let { arrowsHandler.removeCallbacks(it) }
+        for (v in listOf(b.prevButton, b.nextButton)) {
+            v.visibility = View.VISIBLE
+            v.animate().alpha(0.75f).setDuration(150).start()
+        }
+        val task = Runnable {
+            for (v in listOf(b.prevButton, b.nextButton)) {
+                v.animate().alpha(0f).setDuration(400).withEndAction {
+                    v.visibility = View.INVISIBLE
+                }.start()
+            }
+        }
+        hideArrowsTask = task
+        arrowsHandler.postDelayed(task, 3500)
     }
 
     // ------------------------------------------------------------- Lecture
