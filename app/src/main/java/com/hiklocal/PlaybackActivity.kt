@@ -220,14 +220,14 @@ class PlaybackActivity : AppCompatActivity() {
             override fun onPlayerError(error: PlaybackException) {
                 val detail = error.cause?.message ?: error.message ?: ""
                 // Même limite que le direct : la bibliothèque RTSP d'Android
-                // refuse la description envoyée par certaines caméras. Le
-                // distinguer d'une absence réelle d'enregistrement évite de
-                // chercher au mauvais endroit (mauvaise date, mauvaise heure…).
+                // refuse la description envoyée par certaines caméras. Plutôt
+                // que d'abandonner, on récupère l'extrait par téléchargement
+                // direct — l'appareil sait le faire sans passer par RTSP.
                 if (detail.contains("fmtp", ignoreCase = true) ||
                     detail.contains("SDP", ignoreCase = true) ||
                     detail.contains("IllegalArgument", ignoreCase = true)
                 ) {
-                    showStatus(getString(R.string.err_playback_stream) + "\n" + detail)
+                    playByDownload()
                 } else {
                     showStatus(getString(R.string.err_no_video))
                 }
@@ -246,6 +246,97 @@ class PlaybackActivity : AppCompatActivity() {
         playbackStartWallMs = System.currentTimeMillis()
         playbackStartMinute = minuteOfDay
         startCursor()
+    }
+
+    // ------------------------------------ Lecture par téléchargement (repli)
+
+    /** Durée d'un extrait téléchargé. Court, pour ne pas faire attendre. */
+    private val segmentMinutes = 2
+    private var downloadJob: kotlinx.coroutines.Job? = null
+    private var downloadedFile: java.io.File? = null
+
+    /**
+     * Récupère l'extrait par HTTP puis le lit depuis le téléphone. Aucun RTSP
+     * n'intervient, ce qui contourne le refus du lecteur. Bonus : sur un
+     * fichier local, la pause, la vitesse et le déplacement fonctionnent
+     * pleinement, contrairement à un flux en direct.
+     */
+    private fun playByDownload() {
+        downloadJob?.cancel()
+        releasePlayerOnly()
+        b.loading.visibility = View.VISIBLE
+        showStatus(getString(R.string.pb_downloading))
+
+        val startMin = minuteOfDay
+        val endMin = (minuteOfDay + segmentMinutes).coerceAtMost(1439)
+        val cam = currentCam
+        val file = java.io.File(cacheDir, "playback_${cam}_$startMin.mp4")
+
+        downloadJob = lifecycleScope.launch {
+            val ok = api!!.downloadSegment(cam, stamp(startMin), stamp(endMin), file) { bytes ->
+                val mo = bytes / 1_000_000.0
+                runOnUiThread {
+                    showStatus(getString(R.string.pb_downloading) + " %.1f Mo".format(mo))
+                }
+            }
+            if (!ok) {
+                showStatus(getString(R.string.err_playback_download))
+                file.delete()
+                return@launch
+            }
+            downloadedFile?.delete()          // libère l'extrait précédent
+            downloadedFile = file
+            b.statusText.visibility = View.GONE
+            playLocalFile(file)
+        }
+    }
+
+    private fun playLocalFile(file: java.io.File) {
+        releasePlayerOnly()
+        b.loading.visibility = View.VISIBLE
+
+        val exo = ExoPlayer.Builder(this).build()
+        player = exo
+        b.playerView.player = exo
+        exo.volume = if (muted) 0f else 1f
+        exo.playbackParameters = PlaybackParameters(speed)
+
+        exo.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY) b.loading.visibility = View.GONE
+                if (state == Player.STATE_ENDED) {
+                    // Extrait terminé : on enchaîne sur les minutes suivantes,
+                    // ce qui donne une lecture continue malgré le découpage.
+                    minuteOfDay = (minuteOfDay + segmentMinutes).coerceAtMost(1439)
+                    updateLabels()
+                    if (minuteOfDay < 1439) playByDownload()
+                }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                showStatus(getString(R.string.err_playback_format))
+            }
+
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                videoWidth = videoSize.width
+                videoHeight = videoSize.height
+            }
+        })
+
+        exo.setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(file)))
+        exo.prepare()
+        exo.playWhenReady = true
+
+        playbackStartWallMs = System.currentTimeMillis()
+        playbackStartMinute = minuteOfDay
+        startCursor()
+    }
+
+    /** Libère le lecteur sans toucher au reste (curseur, état du téléchargement). */
+    private fun releasePlayerOnly() {
+        player?.release()
+        player = null
+        b.playerView.player = null
     }
 
     // -------------------------------------------------- Pause / son / vitesse
@@ -417,12 +508,22 @@ class PlaybackActivity : AppCompatActivity() {
 
     private fun stop() {
         if (recorder?.isRecording() == true) stopRecording()
+        downloadJob?.cancel()
+        downloadJob = null
         stopCursor()
         b.timeline.setCursor(null)
         player?.release()
         player = null
         b.playerView.player = null
         b.loading.visibility = View.GONE
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Les extraits téléchargés sont temporaires : inutile d'occuper le
+        // stockage du téléphone une fois l'écran quitté.
+        downloadedFile?.delete()
+        downloadedFile = null
     }
 
     override fun onStop() {
