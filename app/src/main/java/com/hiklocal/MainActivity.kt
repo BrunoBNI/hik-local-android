@@ -33,6 +33,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.hiklocal.databinding.ActivityMainBinding
+import org.videolan.libvlc.LibVLC
+import org.videolan.libvlc.Media
+import org.videolan.libvlc.MediaPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -223,6 +226,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         b.videoFrame.layoutParams = params
+        applyVlcAspect()
     }
 
     // -------------------------------------------------------------- Direct
@@ -233,6 +237,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startLive() {
         if (recorder?.isRecording() == true) stopRecording()   // caméra changée : on ne mélange pas deux flux
+        releaseVlc()             // on repart du lecteur natif à chaque fois
         stopFrameMode()          // on retente toujours la vidéo d'abord
         retryHandler?.removeCallbacksAndMessages(null)
         retriesLeft = RETRY_DELAYS_MS.size
@@ -290,7 +295,7 @@ class MainActivity : AppCompatActivity() {
                     detail.contains("SDP", ignoreCase = true) ||
                     detail.contains("IllegalArgument", ignoreCase = true)
                 ) {
-                    startFrameMode()
+                    startVlcMode()
                     return
                 }
 
@@ -303,9 +308,8 @@ class MainActivity : AppCompatActivity() {
                     retryHandler = h
                     h.postDelayed({ play(url) }, delay)
                 } else {
-                    // Dernier recours : plutôt qu'un écran d'erreur, on montre
-                    // l'image. Une vue qui marche vaut mieux qu'un message.
-                    startFrameMode()
+                    // Dernier recours avant le mode image : le moteur VLC.
+                    startVlcMode()
                 }
             }
 
@@ -328,6 +332,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleSound() {
         muted = !muted
+        vlcPlayer?.volume = if (muted) 0 else 100
         player?.volume = if (muted) 0f else 1f
         b.soundButton.setImageResource(
             if (muted) android.R.drawable.ic_lock_silent_mode
@@ -425,6 +430,10 @@ class MainActivity : AppCompatActivity() {
             stopRecording()
             return
         }
+        if (vlcModeActive) {
+            Toast.makeText(this, "Enregistrement indisponible sur cette caméra", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (frameModeActive) {
             // L'enregistrement capture le rendu du lecteur vidéo, absent en
             // mode image. La photo (📷) reste disponible, elle.
@@ -496,6 +505,91 @@ class MainActivity : AppCompatActivity() {
                 ).show()
             }
         }
+    }
+
+    // ------------------------------------------------- Repli VLC (vidéo réelle)
+
+    private var libVlc: LibVLC? = null
+    private var vlcPlayer: MediaPlayer? = null
+    private var vlcModeActive = false
+
+    /**
+     * Second essai, avec le moteur de VLC (fondé sur ffmpeg, comme la version
+     * PC). Il accepte les descriptions SDP que le lecteur Android refuse, et
+     * restitue la vraie vidéo avec le son — contrairement au mode image, qui
+     * reste le dernier recours si VLC échoue aussi.
+     */
+    private fun startVlcMode() {
+        if (vlcModeActive) return
+        vlcModeActive = true
+        retryHandler?.removeCallbacksAndMessages(null)
+        releasePlayer()
+        stopFrameMode()
+        showStatus(null)
+        b.loading.visibility = View.VISIBLE
+        b.vlcLayout.visibility = View.VISIBLE
+
+        val camAtStart = currentCam
+        val url = api!!.liveUrl(camAtStart, prefs.stream)
+
+        val options = arrayListOf(
+            "--rtsp-tcp",
+            "--network-caching=1000",   // court : c'est du direct, la latence compte
+            "--no-drop-late-frames",
+            "--no-skip-frames"
+        )
+        val vlc = LibVLC(this, options)
+        libVlc = vlc
+        val mp = MediaPlayer(vlc)
+        vlcPlayer = mp
+        mp.attachViews(b.vlcLayout, null, false, false)
+
+        val media = Media(vlc, android.net.Uri.parse(url))
+        media.setHWDecoderEnabled(true, false)
+        mp.media = media
+        media.release()
+        mp.volume = if (muted) 0 else 100
+
+        mp.setEventListener { event ->
+            when (event.type) {
+                MediaPlayer.Event.Playing -> {
+                    b.loading.visibility = View.GONE
+                    showStatus(null)
+                }
+                // Le format ne peut être imposé qu'une fois la sortie créée.
+                MediaPlayer.Event.Vout -> applyVlcAspect()
+                MediaPlayer.Event.EncounteredError -> {
+                    // Dernier recours : les images JPEG, qui ont toujours
+                    // fonctionné sur toutes les caméras.
+                    releaseVlc()
+                    startFrameMode()
+                }
+            }
+        }
+        mp.play()
+    }
+
+    /** Impose le 16:9 : ces caméras encodent en 960x1080 anamorphique. */
+    private fun applyVlcAspect() {
+        if (prefs.ratio == 2) return          // format natif demandé : on n'impose rien
+        vlcPlayer?.let {
+            it.setAspectRatio(if (prefs.ratio == 1) "4:3" else "16:9")
+            it.setScale(0f)
+        }
+    }
+
+    private fun releaseVlc() {
+        vlcPlayer?.let {
+            it.setEventListener(null as MediaPlayer.EventListener?)
+            if (it.isPlaying) it.stop()
+            it.detachViews()
+            it.release()
+        }
+        vlcPlayer = null
+        libVlc?.release()
+        libVlc = null
+        vlcModeActive = false
+        b.vlcLayout.visibility = View.GONE
     }
 
     // ------------------------------------------------- Mode image (repli)
@@ -613,9 +707,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyTransform() {
-        // Le zoom doit suivre la vue réellement affichée : lecteur vidéo en
-        // temps normal, image en mode dégradé.
-        for (v in listOf(b.playerView, b.frameImage)) {
+        // Le zoom doit suivre la vue réellement affichée : lecteur natif,
+        // surface VLC ou image, selon le mode en cours.
+        for (v in listOf(b.playerView, b.frameImage, b.vlcLayout)) {
             v.scaleX = scale
             v.scaleY = scale
             v.pivotX = 0f
@@ -679,6 +773,7 @@ class MainActivity : AppCompatActivity() {
         retryHandler?.removeCallbacksAndMessages(null)
         if (recorder?.isRecording() == true) stopRecording()
         stopFrameMode()
+        releaseVlc()
         releasePlayer()
     }
 
