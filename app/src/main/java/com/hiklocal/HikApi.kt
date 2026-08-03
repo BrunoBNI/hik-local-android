@@ -58,6 +58,24 @@ class HikApi(
     /** Vérifie l'adresse et les identifiants d'un coup. */
     suspend fun checkConnection(): ApiResult<String> = get("/ISAPI/System/deviceInfo")
 
+    /** Même appel que checkConnection(), sous un nom plus parlant pour l'écran Infos. */
+    suspend fun deviceInfo(): ApiResult<String> = get("/ISAPI/System/deviceInfo")
+
+    /** Extrait quelques champs lisibles de la réponse XML deviceInfo. */
+    fun parseDeviceInfo(xml: String): Map<String, String> {
+        val fields = listOf(
+            "deviceName" to "Nom", "model" to "Modèle",
+            "firmwareVersion" to "Firmware", "serialNumber" to "Numéro de série"
+        )
+        val out = LinkedHashMap<String, String>()
+        for ((tag, label) in fields) {
+            Regex("<$tag>(.*?)</$tag>").find(xml)?.groupValues?.get(1)?.trim()?.let {
+                if (it.isNotEmpty()) out[label] = it
+            }
+        }
+        return out
+    }
+
     /**
      * Caméras déclarées par l'appareil. Les entrées sans caméra branchée
      * (videoInputEnabled = false) sont écartées : inutile de les proposer.
