@@ -66,4 +66,16 @@
             android:columnCount="2"
             android:padding="6dp" />
     </ScrollView>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/panel"
+        android:paddingStart="10dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="6dp"
+        android:text="@string/mosaic_note"
+        android:textColor="#FFFFCC00"
+        android:textSize="10sp" />
 </LinearLayout>
