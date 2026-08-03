@@ -109,6 +109,17 @@
             android:scaleType="fitCenter"
             android:visibility="gone" />
 
+        <!--
+          Surface VLC : moteur ffmpeg, tolérant sur la fiche technique du
+          flux. C'est elle qui affiche la vraie vidéo des caméras que le
+          lecteur natif d'Android refuse.
+        -->
+        <org.videolan.libvlc.util.VLCVideoLayout
+            android:id="@+id/vlcLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
         <ProgressBar
             android:id="@+id/loading"
             android:layout_width="46dp"
