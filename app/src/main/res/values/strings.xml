@@ -56,6 +56,8 @@
     <string name="mosaic_all_on">Tout activer</string>
     <string name="mosaic_all_off">Tout couper</string>
     <string name="mosaic_note">Mosaïque en photos actualisées automatiquement (pas en vidéo continue), pour préserver la batterie.</string>
+    <string name="mosaic_preview_desc">Aperçu de la caméra</string>
+    <string name="mosaic_toggle_desc">Couper ou réactiver le flux de cette caméra</string>
 
     <string name="captures_empty">Aucune photo prise depuis l\'application pour l\'instant.</string>
     <string name="captures_permission">Autorisez l\'accès aux photos pour voir vos captures.</string>
