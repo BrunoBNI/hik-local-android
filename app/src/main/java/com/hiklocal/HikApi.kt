@@ -161,6 +161,60 @@ class HikApi(
             }
         }
 
+    /**
+     * Télécharge un extrait d'enregistrement entre deux instants, via HTTP et
+     * non RTSP.
+     *
+     * C'est le contournement de la limite du lecteur Android, qui refuse la
+     * description SDP envoyée par ces caméras ("SDP format error"). Ici, aucun
+     * RTSP n'est négocié : l'appareil renvoie directement le fichier. Il
+     * annonce lui-même savoir le faire (isSupportDownloadbyTime), et l'adresse
+     * de lecture est construite à la main, sans dépendre de la recherche ISAPI
+     * qui, elle, est verrouillée sur ce firmware.
+     */
+    suspend fun downloadSegment(
+        cam: Int,
+        startStamp: String,
+        endStamp: String,
+        target: java.io.File,
+        onProgress: (bytes: Long) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        // Le & doit être échappé : cette adresse voyage à l'intérieur d'un XML.
+        val playbackUri = "rtsp://$host/Streaming/tracks/${cam}01" +
+            "?starttime=$startStamp&amp;endtime=$endStamp"
+        val xml = "<downloadRequest><playbackURI>$playbackUri</playbackURI></downloadRequest>"
+        try {
+            val req = Request.Builder()
+                .url(url("/ISAPI/ContentMgmt/download"))
+                .post(xml.toRequestBody("application/xml".toMediaType()))
+                .build()
+            client.newCall(req).execute().use { r ->
+                if (!r.isSuccessful) return@withContext false
+                val body = r.body ?: return@withContext false
+
+                // Une réponse XML signifie un refus de l'appareil, pas une vidéo.
+                val type = r.header("Content-Type").orEmpty()
+                if (type.contains("xml", ignoreCase = true)) return@withContext false
+
+                target.outputStream().use { out ->
+                    val buf = ByteArray(64 * 1024)
+                    var total = 0L
+                    val input = body.byteStream()
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n <= 0) break
+                        out.write(buf, 0, n)
+                        total += n
+                        onProgress(total)
+                    }
+                }
+                target.length() > 10_000       // en deçà, ce n'est pas une vidéo
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     // -------------------------------------------------------------- RTSP
 
     /**
