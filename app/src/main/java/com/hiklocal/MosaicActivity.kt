@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.FrameLayout
 import android.widget.GridLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -89,14 +88,28 @@ class MosaicActivity : AppCompatActivity() {
         val columns = (resources.configuration.screenWidthDp / 150).coerceIn(2, 4)
         b.grid.columnCount = columns
 
+        // Hauteur calculée ici, une bonne fois : la déduire après coup d'un
+        // écouteur de mise en page laissait les vignettes à zéro pixel de
+        // haut, donc invisibles, tant qu'aucun changement de largeur ne
+        // survenait.
+        val density = resources.displayMetrics.density
+        val gridPaddingPx = (12 * density).toInt()          // padding du GridLayout
+        val tileMarginPx = (6 * density).toInt()            // marges gauche+droite d'une tuile
+        val screenPx = resources.displayMetrics.widthPixels
+        val tileWidthPx = ((screenPx - gridPaddingPx) / columns) - tileMarginPx
+        val tileHeightPx = (tileWidthPx * 9 / 16).coerceAtLeast(1)
+
         for (cam in cameras) {
             val tile = TileMosaicBinding.inflate(LayoutInflater.from(this), b.grid, false)
             val params = GridLayout.LayoutParams(
                 GridLayout.spec(GridLayout.UNDEFINED, 1f),
                 GridLayout.spec(GridLayout.UNDEFINED, 1f)
             )
+            params.width = 0
             tile.root.layoutParams = params
-            applyAspectRatio(tile.tileFrame)
+            tile.tileFrame.layoutParams = tile.tileFrame.layoutParams.apply {
+                height = tileHeightPx
+            }
 
             tile.tileLabel.text = cam.label
             setTileOff(tile, cam.id in off)
@@ -106,9 +119,11 @@ class MosaicActivity : AppCompatActivity() {
                 prefs.mosaicOff = off
                 setTileOff(tile, cam.id in off)
                 if (cam.id in off) stopTile(cam.id) else startTile(cam.id, tile)
+                updateCount()
             }
 
-            tile.root.setOnClickListener {
+            // Le clic sur l'image bascule vers cette caméra en plein écran.
+            tile.tileFrame.setOnClickListener {
                 if (cam.id !in off) {
                     prefs.lastCamera = cam.id
                     startActivity(
@@ -131,17 +146,6 @@ class MosaicActivity : AppCompatActivity() {
         tile.tileToggle.setImageResource(
             if (isOff) android.R.drawable.ic_media_play else android.R.drawable.ic_lock_power_off
         )
-    }
-
-    /** Une image ImageView n'a pas de ratio fixe dans GridLayout : on le pose à la mesure. */
-    private fun applyAspectRatio(frame: FrameLayout) {
-        frame.addOnLayoutChangeListener { v, l, _, r, _, oldL, _, oldR, _ ->
-            val width = r - l
-            val oldWidth = oldR - oldL
-            if (width > 0 && width != oldWidth) {
-                v.layoutParams = v.layoutParams.apply { height = width * 9 / 16 }
-            }
-        }
     }
 
     /** Boucle de rafraîchissement d'une vignette : s'arrête net dès la coupure. */
