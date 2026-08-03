@@ -53,7 +53,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Lecture RTSP (direct et relecture)
-    implementation("androidx.media3:media3-exoplayer:1.3.1")
-    implementation("androidx.media3:media3-exoplayer-rtsp:1.3.1")
-    implementation("androidx.media3:media3-ui:1.3.1")
+    // Media3 1.4.1+ a corrigé la gestion des descriptions SDP invalides côté RTSP
+    // (androidx/media#1087), qui provoquait "missing attribute fmtp" avec certains
+    // firmwares Hikvision. On prend la version stable la plus récente.
+    implementation("androidx.media3:media3-exoplayer:1.10.0")
+    implementation("androidx.media3:media3-exoplayer-rtsp:1.10.0")
+    implementation("androidx.media3:media3-ui:1.10.0")
 }
