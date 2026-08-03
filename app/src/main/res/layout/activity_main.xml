@@ -94,6 +94,21 @@
             app:resize_mode="fit"
             app:use_controller="false" />
 
+        <!--
+          Mode image par image : utilisé quand le flux vidéo RTSP est refusé
+          par le lecteur (certains firmwares Hikvision envoient une
+          description SDP que la bibliothèque Android rejette). Les images
+          viennent alors de l'appareil en JPEG, exactement comme la mosaïque
+          qui, elle, a toujours fonctionné.
+        -->
+        <ImageView
+            android:id="@+id/frameImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/live_frames_mode"
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
+
         <ProgressBar
             android:id="@+id/loading"
             android:layout_width="46dp"
@@ -208,6 +223,22 @@
                 android:contentDescription="@string/live_fullscreen"
                 android:src="@android:drawable/ic_menu_view" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/modeIndicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="8dp"
+            android:background="#A6000000"
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="3dp"
+            android:text="@string/live_frames_mode"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/recIndicator"
