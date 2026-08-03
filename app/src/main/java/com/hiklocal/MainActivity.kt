@@ -201,26 +201,28 @@ class MainActivity : AppCompatActivity() {
             ImageView.ScaleType.FIT_XY          // format imposé : on remplit le cadre
         }
 
-        b.videoFrame.post {
-            val w = b.videoFrame.width
-            if (w <= 0) return@post
-            val params = b.videoFrame.layoutParams as android.widget.LinearLayout.LayoutParams
-            when (mode) {
-                0 -> {
-                    params.height = (w * 9f / 16f).toInt(); params.weight = 0f
-                    b.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-                }
-                1 -> {
-                    params.height = (w * 3f / 4f).toInt(); params.weight = 0f
-                    b.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-                }
-                else -> {
-                    params.height = 0; params.weight = 1f
-                    b.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                }
+        // La largeur de l'écran est connue immédiatement, contrairement à
+        // celle de la vue : s'appuyer dessus évite que le format ne
+        // s'applique pas au tout premier affichage.
+        val screenWidth = resources.displayMetrics.widthPixels
+        val params = b.videoFrame.layoutParams as android.widget.LinearLayout.LayoutParams
+        when (mode) {
+            0 -> {
+                params.height = (screenWidth * 9f / 16f).toInt(); params.weight = 0f
+                b.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
             }
-            b.videoFrame.layoutParams = params
+            1 -> {
+                params.height = (screenWidth * 3f / 4f).toInt(); params.weight = 0f
+                b.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+            }
+            else -> {
+                // Format natif : la vidéo occupe la place restante et garde
+                // ses proportions d'origine, sans être étirée.
+                params.height = 0; params.weight = 1f
+                b.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+            }
         }
+        b.videoFrame.layoutParams = params
     }
 
     // -------------------------------------------------------------- Direct
@@ -636,12 +638,19 @@ class MainActivity : AppCompatActivity() {
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             b.topbar.root.visibility = View.GONE
             b.headerRow.visibility = View.GONE
+            b.toolbarRow.visibility = View.GONE
+            // En plein écran la vidéo reprend toute la place disponible.
+            (b.videoFrame.layoutParams as android.widget.LinearLayout.LayoutParams).apply {
+                height = 0; weight = 1f
+            }.also { b.videoFrame.layoutParams = it }
         } else {
             requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             WindowCompat.setDecorFitsSystemWindows(window, true)
             controller.show(WindowInsetsCompat.Type.systemBars())
             b.topbar.root.visibility = View.VISIBLE
             b.headerRow.visibility = View.VISIBLE
+            b.toolbarRow.visibility = View.VISIBLE
+            applyRatio(prefs.ratio)   // rétablit le format choisi
         }
     }
 
