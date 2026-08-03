@@ -45,6 +45,9 @@
     <string name="err_no_camera">Aucune caméra active sur cet appareil.</string>
     <string name="err_no_video">Pas d\'enregistrement lisible à cette heure.</string>
     <string name="err_playback_stream">Cette caméra envoie un flux que le lecteur Android refuse (même limite que le direct). L\'enregistrement existe peut-être : utilisez la version PC pour le consulter.</string>
+    <string name="pb_downloading">Récupération de l\'extrait…</string>
+    <string name="err_playback_download">Extrait indisponible : soit il n\'y a pas d\'enregistrement à cette heure, soit l\'appareil a refusé le téléchargement.</string>
+    <string name="err_playback_format">Extrait récupéré mais illisible sur ce téléphone (format propriétaire). La version PC sait l\'ouvrir.</string>
     <string name="err_live_unavailable">Flux indisponible pour cette caméra.</string>
     <string name="ptz_unsupported">Cette caméra ne pivote pas.</string>
 
