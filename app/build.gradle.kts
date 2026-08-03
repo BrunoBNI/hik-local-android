@@ -84,5 +84,5 @@ dependencies {
     // la version PC de lire ces flux. Contrairement au lecteur RTSP d'Android,
     // il tolère les descriptions SDP non strictement conformes envoyées par
     // ces caméras ("missing attribute fmtp" / "SDP format error").
-    implementation("org.videolan.android:libvlc-all:3.6.0")
+    implementation("org.videolan.android:libvlc-all:3.5.1")
 }
