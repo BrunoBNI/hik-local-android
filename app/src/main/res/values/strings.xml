@@ -12,6 +12,7 @@
     <string name="login_footer">Les identifiants restent sur ce téléphone.</string>
 
     <string name="live_snapshot">Photo</string>
+    <string name="live_sound">Son</string>
     <string name="live_playback">Lecture</string>
     <string name="live_prev">Caméra précédente</string>
     <string name="live_next">Caméra suivante</string>
@@ -58,7 +59,8 @@
     <string name="mosaic_off_hint">Les caméras désactivées ici n\'utilisent pas de bande passante.</string>
     <string name="mosaic_all_on">Tout activer</string>
     <string name="mosaic_all_off">Tout couper</string>
-    <string name="mosaic_note">Mosaïque en photos actualisées automatiquement (pas en vidéo continue), pour préserver la batterie.</string>
+    <string name="mosaic_off_label">Flux coupé</string>
+    <string name="mosaic_note">Toucher une vignette pour l\'ouvrir en grand. Le bouton ⏻ coupe le flux d\'une caméra : elle cesse alors de consommer de la bande passante.</string>
     <string name="mosaic_preview_desc">Aperçu de la caméra</string>
     <string name="mosaic_toggle_desc">Couper ou réactiver le flux de cette caméra</string>
 
