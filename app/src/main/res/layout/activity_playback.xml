@@ -10,13 +10,18 @@
         android:id="@+id/topbar"
         layout="@layout/topbar" />
 
+    <!-- Sélection : caméra et date sur une seule ligne compacte. -->
     <LinearLayout
+        android:id="@+id/headerRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/panel"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="8dp">
+        android:paddingStart="10dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="4dp">
 
         <Spinner
             android:id="@+id/cameraSpinner"
@@ -29,13 +34,27 @@
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/text" />
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:textColor="@color/text"
+            android:textSize="12sp" />
+
+        <ImageButton
+            android:id="@+id/pbFullscreenButton"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/live_fullscreen"
+            android:padding="4dp"
+            android:src="@android:drawable/ic_menu_view" />
     </LinearLayout>
 
+    <!-- Zone vidéo : c'est elle qui doit dominer l'écran. -->
     <FrameLayout
+        android:id="@+id/videoFrame"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
         android:background="@color/black">
 
         <androidx.media3.ui.PlayerView
@@ -46,9 +65,8 @@
             app:use_controller="false" />
 
         <!--
-          Surface de rendu de LibVLC. C'est elle qui affiche réellement la
-          lecture : son moteur (ffmpeg) accepte les flux que le lecteur
-          Android refuse, exactement comme la version PC.
+          Surface de rendu de LibVLC : son moteur (ffmpeg) accepte les flux
+          que le lecteur Android refuse, comme sur la version PC.
         -->
         <org.videolan.libvlc.util.VLCVideoLayout
             android:id="@+id/vlcLayout"
@@ -57,8 +75,8 @@
 
         <ProgressBar
             android:id="@+id/loading"
-            android:layout_width="46dp"
-            android:layout_height="46dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_gravity="center"
             android:indeterminateTint="@color/accent"
             android:visibility="gone" />
@@ -70,222 +88,228 @@
             android:layout_gravity="center"
             android:gravity="center"
             android:padding="16dp"
-            android:scrollbars="vertical"
             android:text="@string/pb_hint"
             android:textColor="@color/text_dim"
             android:textIsSelectable="true"
             android:textSize="12sp" />
-    </FrameLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="14dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="14dp"
-        android:paddingBottom="14dp">
-
+        <!-- Heure courante incrustée : gagne une ligne d'interface. -->
         <TextView
             android:id="@+id/timeLabel"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center"
+            android:layout_gravity="top|end"
+            android:layout_margin="6dp"
+            android:background="#A6000000"
+            android:paddingStart="8dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="2dp"
             android:textColor="#FFFFCC00"
-            android:textSize="22sp"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </FrameLayout>
+
+    <!-- Frise horaire, compacte. -->
+    <com.hiklocal.TimelineView
+        android:id="@+id/timeline"
+        android:layout_width="match_parent"
+        android:layout_height="40dp" />
+
+    <!-- Commandes : une seule ligne d'icônes, volontairement discrète. -->
+    <LinearLayout
+        android:id="@+id/controlsRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/panel"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="2dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="2dp"
+        android:paddingBottom="2dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/back5"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:text="@string/pb_back5"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/back1"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:text="@string/pb_back1"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/pauseButton"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1.1"
+            android:backgroundTint="@color/accent"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:text="⏸"
+            android:textColor="@color/text"
+            android:textSize="14sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/fwd1"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:text="@string/pb_fwd1"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/fwd5"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:text="@string/pb_fwd5"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
+
+        <ImageButton
+            android:id="@+id/pbSoundButton"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/live_sound"
+            android:padding="4dp"
+            android:src="@android:drawable/ic_lock_silent_mode" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/speedDown"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="2dp"
+            android:text="⏪"
+            android:textColor="@color/text_dim"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/speedLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="26dp"
+            android:gravity="center"
+            android:text="×1"
+            android:textColor="#FFFFCC00"
+            android:textSize="11sp"
             android:textStyle="bold" />
 
-        <com.hiklocal.TimelineView
-            android:id="@+id/timeline"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="4dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/speedUp"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="2dp"
+            android:paddingEnd="6dp"
+            android:text="⏩"
+            android:textColor="@color/text_dim"
+            android:textSize="12sp" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:orientation="horizontal">
+        <ImageButton
+            android:id="@+id/pbRecordButton"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/live_record"
+            android:padding="4dp"
+            android:src="@android:drawable/presence_video_online" />
+    </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/tlZoomOut"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:text="🔍−"
-                android:textColor="@color/text_dim"
-                android:textSize="12sp" />
+    <!-- Réglages de la frise, discrets, sous les commandes. -->
+    <LinearLayout
+        android:id="@+id/timelineTools"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="4dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/tlZoomIn"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:text="🔍+"
-                android:textColor="@color/text_dim"
-                android:textSize="12sp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tlZoomOut"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:text="🔍−"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
 
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tlZoomIn"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:text="🔍+"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/tlReset"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Journée entière"
-                android:textColor="@color/text_dim"
-                android:textSize="12sp" />
-        </LinearLayout>
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/back5"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="@string/pb_back5"
-                android:textColor="@color/text"
-                android:textSize="12sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/back1"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="@string/pb_back1"
-                android:textColor="@color/text"
-                android:textSize="12sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/playButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1.4"
-                android:backgroundTint="@color/accent"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="@string/pb_play"
-                android:textColor="@color/text"
-                android:textSize="12sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/fwd1"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="@string/pb_fwd1"
-                android:textColor="@color/text"
-                android:textSize="12sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/fwd5"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="@string/pb_fwd5"
-                android:textColor="@color/text"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageButton
-                android:id="@+id/pbSoundButton"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/live_snapshot"
-                android:src="@android:drawable/ic_lock_silent_mode" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/pauseButton"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="⏸"
-                android:textColor="@color/text"
-                android:textSize="16sp" />
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@color/panel"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="4dp">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/speedDown"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="0dp"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:text="⏪"
-                    android:textColor="@color/text" />
-
-                <TextView
-                    android:id="@+id/speedLabel"
-                    android:layout_width="44dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:text="×1"
-                    android:textColor="#FFFFCC00"
-                    android:textStyle="bold" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/speedUp"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="0dp"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:text="⏩"
-                    android:textColor="@color/text" />
-            </LinearLayout>
-
-            <ImageButton
-                android:id="@+id/pbRecordButton"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:layout_marginStart="6dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/live_record"
-                android:src="@android:drawable/presence_video_online" />
-        </LinearLayout>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tlReset"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:text="@string/pb_full_day"
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
     </LinearLayout>
 </LinearLayout>
