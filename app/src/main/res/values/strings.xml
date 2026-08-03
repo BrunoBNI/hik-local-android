@@ -50,6 +50,7 @@
     <string name="err_playback_download">Extrait indisponible : soit il n\'y a pas d\'enregistrement à cette heure, soit l\'appareil a refusé le téléchargement.</string>
     <string name="err_playback_format">Extrait récupéré mais illisible sur ce téléphone (format propriétaire). La version PC sait l\'ouvrir.</string>
     <string name="err_record_playback">Enregistrement disponible sur le direct uniquement.</string>
+    <string name="err_record_vlc">Enregistrement indisponible sur cette caméra.</string>
     <string name="err_live_unavailable">Flux indisponible pour cette caméra.</string>
     <string name="ptz_unsupported">Cette caméra ne pivote pas.</string>
 
