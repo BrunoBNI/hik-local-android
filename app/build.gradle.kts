@@ -11,8 +11,8 @@ android {
         applicationId = "com.hiklocal"
         minSdk = 26          // Android 8.0 Oreo
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
 
         // LibVLC embarque des bibliothèques natives par architecture. On se
         // limite aux deux qui couvrent la quasi-totalité des téléphones, pour
