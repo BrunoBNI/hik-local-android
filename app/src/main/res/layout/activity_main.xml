@@ -148,88 +148,12 @@
             android:contentDescription="@string/live_next"
             android:src="@android:drawable/ic_media_next" />
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|start"
-            android:layout_margin="8dp"
-            android:background="#A6000000"
-            android:orientation="horizontal"
-            android:padding="2dp">
-
-            <ImageButton
-                android:id="@+id/soundButton"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/live_snapshot"
-                android:src="@android:drawable/ic_lock_silent_mode" />
-
-            <ImageButton
-                android:id="@+id/snapshotButton"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/live_snapshot"
-                android:src="@android:drawable/ic_menu_camera" />
-
-            <ImageButton
-                android:id="@+id/recordButton"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/live_record"
-                android:src="@android:drawable/presence_video_online" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|end"
-            android:layout_margin="8dp"
-            android:background="#A6000000"
-            android:orientation="horizontal"
-            android:padding="2dp">
-
-            <ImageButton
-                android:id="@+id/zoomInButton"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/live_zoom_in"
-                android:src="@android:drawable/ic_menu_zoom" />
-
-            <ImageButton
-                android:id="@+id/zoomOutButton"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/live_zoom_out"
-                android:src="@android:drawable/ic_menu_zoom" />
-
-            <ImageButton
-                android:id="@+id/zoomResetButton"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/live_zoom_reset"
-                android:src="@android:drawable/ic_menu_revert" />
-
-            <ImageButton
-                android:id="@+id/fullscreenButton"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/live_fullscreen"
-                android:src="@android:drawable/ic_menu_view" />
-        </LinearLayout>
-
         <TextView
             android:id="@+id/modeIndicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
-            android:layout_margin="8dp"
+            android:layout_margin="6dp"
             android:background="#A6000000"
             android:paddingStart="8dp"
             android:paddingTop="3dp"
@@ -245,7 +169,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="top|start"
-            android:layout_margin="8dp"
+            android:layout_margin="6dp"
             android:background="#CCE2231A"
             android:paddingStart="8dp"
             android:paddingTop="4dp"
@@ -256,4 +180,90 @@
             android:textSize="12sp"
             android:visibility="gone" />
     </FrameLayout>
+
+    <!--
+      Barre d'outils SOUS la vidéo, et non superposée dessus : posés en
+      surimpression, ces boutons masquaient le bas de l'image.
+    -->
+    <LinearLayout
+        android:id="@+id/toolbarRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/panel"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="6dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="4dp">
+
+        <ImageButton
+            android:id="@+id/soundButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/live_sound"
+            android:src="@android:drawable/ic_lock_silent_mode" />
+
+        <ImageButton
+            android:id="@+id/snapshotButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/live_snapshot"
+            android:src="@android:drawable/ic_menu_camera" />
+
+        <ImageButton
+            android:id="@+id/recordButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/live_record"
+            android:src="@android:drawable/presence_video_online" />
+
+        <ImageButton
+            android:id="@+id/zoomInButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/live_zoom_in"
+            android:src="@android:drawable/ic_menu_zoom" />
+
+        <ImageButton
+            android:id="@+id/zoomOutButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/live_zoom_out"
+            android:src="@android:drawable/ic_menu_revert" />
+
+        <ImageButton
+            android:id="@+id/zoomResetButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/live_zoom_reset"
+            android:src="@android:drawable/ic_menu_crop" />
+
+        <ImageButton
+            android:id="@+id/fullscreenButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/live_fullscreen"
+            android:src="@android:drawable/ic_menu_view" />
+    </LinearLayout>
+
+    <!-- Espace souple : la vidéo reste ancrée en haut, sous les menus. -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 </LinearLayout>
