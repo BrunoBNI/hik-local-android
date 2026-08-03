@@ -241,8 +241,6 @@ class PlaybackActivity : AppCompatActivity() {
 
         mp.volume = if (muted) 0 else 100
         mp.rate = speed
-        mp.setAspectRatio("16:9")   // ces caméras encodent en 960x1080 anamorphique
-        mp.setScale(0f)             // 0 = adapter à la fenêtre
 
         mp.setEventListener { event ->
             when (event.type) {
@@ -250,6 +248,11 @@ class PlaybackActivity : AppCompatActivity() {
                     b.loading.visibility = View.GONE
                     b.statusText.visibility = View.GONE
                 }
+                // La sortie vidéo vient d'être créée : c'est seulement
+                // maintenant que VLC accepte une consigne de format. Appelée
+                // avant, elle est purement et simplement ignorée — c'était la
+                // raison pour laquelle le 16:9 restait sans effet.
+                MediaPlayer.Event.Vout -> applyVlcAspect()
                 MediaPlayer.Event.EndReached -> showStatus(getString(R.string.err_no_video))
                 MediaPlayer.Event.EncounteredError -> {
                     // Si même VLC n'y arrive pas, il n'y a probablement pas
@@ -265,6 +268,18 @@ class PlaybackActivity : AppCompatActivity() {
         playbackStartWallMs = System.currentTimeMillis()
         playbackStartMinute = minuteOfDay
         startCursor()
+    }
+
+    /**
+     * Impose le 16:9 à VLC. Ces caméras encodent en 960x1080 anamorphique :
+     * sans consigne, VLC affiche l'image telle quelle, donc écrasée en
+     * hauteur. À n'appeler qu'une fois la sortie vidéo créée.
+     */
+    private fun applyVlcAspect() {
+        vlcPlayer?.let {
+            it.setAspectRatio("16:9")
+            it.setScale(0f)      // 0 = adapter à la fenêtre, sans rognage
+        }
     }
 
     private fun releaseVlc() {
@@ -408,10 +423,7 @@ class PlaybackActivity : AppCompatActivity() {
 
         // VLC impose lui aussi le format, sinon il conserve celui de la source
         // (960x1080 sur ces caméras, donc une image étirée en hauteur).
-        vlcPlayer?.let {
-            it.setAspectRatio("16:9")
-            it.setScale(0f)          // 0 = adapter à la fenêtre
-        }
+        applyVlcAspect()
 
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         if (immersive) {
