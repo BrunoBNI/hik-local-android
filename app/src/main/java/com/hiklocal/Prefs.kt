@@ -38,6 +38,11 @@ class Prefs(context: Context) {
         get() = sp.getInt("stream", 1)
         set(v) = sp.edit().putInt("stream", v).apply()
 
+    /** 0 = 16:9 forcé, 1 = 4:3 forcé, 2 = format natif. */
+    var ratio: Int
+        get() = sp.getInt("ratio", 0)
+        set(v) = sp.edit().putInt("ratio", v).apply()
+
     /** Caméras désactivées dans la mosaïque : n'utilisent plus de bande passante. */
     var mosaicOff: Set<Int>
         get() = sp.getString("mosaicOff", "")
