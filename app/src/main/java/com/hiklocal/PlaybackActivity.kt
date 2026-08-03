@@ -2,6 +2,7 @@ package com.hiklocal
 
 import android.Manifest
 import android.app.DatePickerDialog
+import android.content.res.Configuration
 import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.os.Build
@@ -17,6 +18,9 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -101,6 +105,7 @@ class PlaybackActivity : AppCompatActivity() {
         setupCameras()
         setupControls()
         updateLabels()
+        applyLayout()
 
         NavBar.setup(
             this, NavBar.Tab.PLAYBACK, b.topbar.overflowButton,
@@ -124,7 +129,12 @@ class PlaybackActivity : AppCompatActivity() {
                     parent: AdapterView<*>?, view: View?, position: Int, id: Long
                 ) {
                     currentCam = cameras[position].id
+                    // Changement de caméra : on coupe net la lecture en cours
+                    // plutôt que de la laisser tourner sur l'ancienne source.
                     stop()
+                    b.timeline.setCursor(null)
+                    b.timeLabel.text = ""
+                    showStatus(getString(R.string.pb_hint))
                 }
 
                 override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -133,7 +143,7 @@ class PlaybackActivity : AppCompatActivity() {
 
     private fun setupControls() {
         b.dateButton.setOnClickListener { pickDate() }
-        b.playButton.setOnClickListener { playFromCurrent() }
+        b.pbFullscreenButton.setOnClickListener { toggleFullscreen() }
         b.back5.setOnClickListener { shift(-5) }
         b.back1.setOnClickListener { shift(-1) }
         b.fwd1.setOnClickListener { shift(1) }
@@ -231,6 +241,8 @@ class PlaybackActivity : AppCompatActivity() {
 
         mp.volume = if (muted) 0 else 100
         mp.rate = speed
+        mp.setAspectRatio("16:9")   // ces caméras encodent en 960x1080 anamorphique
+        mp.setScale(0f)             // 0 = adapter à la fenêtre
 
         mp.setEventListener { event ->
             when (event.type) {
@@ -362,6 +374,74 @@ class PlaybackActivity : AppCompatActivity() {
         player?.release()
         player = null
         b.playerView.player = null
+    }
+
+    // ---------------------------------------------- Mise en page / rotation
+
+    private var isFullscreenOn = false
+
+    /**
+     * En portrait, la vidéo occupe un cadre 16:9 sous les menus. En paysage,
+     * elle prend toute la place disponible et l'interface se réduit au
+     * minimum : c'est l'orientation qu'on choisit justement pour voir grand.
+     */
+    private fun applyLayout() {
+        val landscape = resources.configuration.orientation ==
+            Configuration.ORIENTATION_LANDSCAPE
+        val immersive = landscape || isFullscreenOn
+
+        b.topbar.root.visibility = if (immersive) View.GONE else View.VISIBLE
+        b.headerRow.visibility = if (immersive) View.GONE else View.VISIBLE
+        b.timelineTools.visibility = if (immersive) View.GONE else View.VISIBLE
+        b.timeline.visibility = if (immersive) View.GONE else View.VISIBLE
+
+        val params = b.videoFrame.layoutParams as android.widget.LinearLayout.LayoutParams
+        if (immersive) {
+            params.height = 0
+            params.weight = 1f
+        } else {
+            // 16:9 calculé sur la largeur d'écran, connue immédiatement.
+            params.height = (resources.displayMetrics.widthPixels * 9f / 16f).toInt()
+            params.weight = 0f
+        }
+        b.videoFrame.layoutParams = params
+
+        // VLC impose lui aussi le format, sinon il conserve celui de la source
+        // (960x1080 sur ces caméras, donc une image étirée en hauteur).
+        vlcPlayer?.let {
+            it.setAspectRatio("16:9")
+            it.setScale(0f)          // 0 = adapter à la fenêtre
+        }
+
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        if (immersive) {
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            WindowCompat.setDecorFitsSystemWindows(window, true)
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    private fun toggleFullscreen() {
+        isFullscreenOn = !isFullscreenOn
+        applyLayout()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // L'activité n'est pas recréée à la rotation (voir configChanges au
+        // manifeste) : c'est ici qu'on réajuste la disposition.
+        applyLayout()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (isFullscreenOn) { toggleFullscreen(); return }
+        @Suppress("DEPRECATION")
+        super.onBackPressed()
     }
 
     // -------------------------------------------------- Pause / son / vitesse
