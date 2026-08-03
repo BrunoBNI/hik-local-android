@@ -273,14 +273,17 @@ class PlaybackActivity : AppCompatActivity() {
         val file = java.io.File(cacheDir, "playback_${cam}_$startMin.mp4")
 
         downloadJob = lifecycleScope.launch {
-            val ok = api!!.downloadSegment(cam, stamp(startMin), stamp(endMin), file) { bytes ->
+            val result = api!!.downloadSegment(cam, stamp(startMin), stamp(endMin), file) { bytes ->
                 val mo = bytes / 1_000_000.0
                 runOnUiThread {
                     showStatus(getString(R.string.pb_downloading) + " %.1f Mo".format(mo))
                 }
             }
-            if (!ok) {
-                showStatus(getString(R.string.err_playback_download))
+            if (!result.ok) {
+                // Le détail vient de l'appareil lui-même : c'est ce qui permet
+                // de corriger précisément plutôt que de deviner.
+                showStatus(getString(R.string.err_playback_download) +
+                    (if (result.detail.isNotEmpty()) "\n\n" + result.detail else ""))
                 file.delete()
                 return@launch
             }
