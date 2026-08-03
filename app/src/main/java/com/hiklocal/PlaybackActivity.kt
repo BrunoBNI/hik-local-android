@@ -257,7 +257,9 @@ class PlaybackActivity : AppCompatActivity() {
 
     private fun releaseVlc() {
         vlcPlayer?.let {
-            it.setEventListener(null)
+            // Le type doit être explicite : sans cela, Kotlin ne sait pas
+            // quelle surcharge de setEventListener viser avec null.
+            it.setEventListener(null as MediaPlayer.EventListener?)
             if (it.isPlaying) it.stop()
             it.detachViews()
             it.release()
