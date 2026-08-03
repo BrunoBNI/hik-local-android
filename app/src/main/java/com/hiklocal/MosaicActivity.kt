@@ -1,6 +1,7 @@
 package com.hiklocal
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -82,7 +83,11 @@ class MosaicActivity : AppCompatActivity() {
     private fun buildGrid() {
         stopAll()
         b.grid.removeAllViews()
-        b.grid.columnCount = 2
+        // Adapte le nombre de colonnes à la largeur réelle de l'écran plutôt
+        // qu'un chiffre fixe : 2 sur un téléphone étroit, jusqu'à 4 sur un
+        // écran large ou en mode paysage, pour ne pas gaspiller l'espace.
+        val columns = (resources.configuration.screenWidthDp / 150).coerceIn(2, 4)
+        b.grid.columnCount = columns
 
         for (cam in cameras) {
             val tile = TileMosaicBinding.inflate(LayoutInflater.from(this), b.grid, false)
@@ -182,5 +187,13 @@ class MosaicActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         if (cameras.isNotEmpty() && jobs.isEmpty()) buildGrid()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Le nombre de colonnes dépend de la largeur d'écran : à recalculer
+        // après une rotation, faute de quoi l'activité garde l'ancienne
+        // disposition (elle n'est pas recréée, voir configChanges au manifeste).
+        if (cameras.isNotEmpty()) buildGrid()
     }
 }
