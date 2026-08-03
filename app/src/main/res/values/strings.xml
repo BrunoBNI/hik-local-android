@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">HikLocal</string>
+    <string name="app_name">Camera DVR</string>
 
     <string name="login_title">Service local</string>
     <string name="login_host">Adresse de l\'appareil</string>
