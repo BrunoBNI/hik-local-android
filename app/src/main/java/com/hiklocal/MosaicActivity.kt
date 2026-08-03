@@ -51,27 +51,8 @@ class MosaicActivity : AppCompatActivity() {
 
         b.allOnButton.setOnClickListener { setAll(false) }
         b.allOffButton.setOnClickListener { setAll(true) }
-        b.deviceLabel.text = api!!.host   // provisoire, remplacé dès que les infos arrivent
 
-        loadDeviceLabel()
         loadCameras()
-    }
-
-    /** Modèle + numéro de série en en-tête, façon fiche d'appareil. */
-    private fun loadDeviceLabel() {
-        lifecycleScope.launch {
-            val r = api!!.deviceInfo()
-            if (r is ApiResult.Ok) {
-                val fields = api!!.parseDeviceInfo(r.value)
-                val model = fields["Modèle"]
-                val serial = fields["Numéro de série"]
-                b.deviceLabel.text = when {
-                    model != null && serial != null -> "$model ($serial)"
-                    model != null -> model
-                    else -> api!!.host
-                }
-            }
-        }
     }
 
     private fun loadCameras() {
