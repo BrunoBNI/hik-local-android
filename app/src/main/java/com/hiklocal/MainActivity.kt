@@ -1,11 +1,14 @@
 package com.hiklocal
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -27,6 +30,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
+import androidx.media3.ui.AspectRatioFrameLayout
 import com.hiklocal.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,6 +50,10 @@ class MainActivity : AppCompatActivity() {
     private var cameras: List<Camera> = emptyList()
     private var currentCam = 1
     private var muted = true
+
+    /** Tentatives de reconnexion en cours pour la caméra actuellement affichée. */
+    private var retriesLeft = 0
+    private var retryHandler: Handler? = null
 
     private val api: HikApi?
         get() = Session.api
@@ -67,9 +75,11 @@ class MainActivity : AppCompatActivity() {
         b.playbackButton.setOnClickListener { openPlayback() }
         b.soundButton.setOnClickListener { toggleSound() }
         b.snapshotButton.setOnClickListener { withStoragePermission { saveSnapshot() } }
-        b.streamButton.setOnClickListener { toggleStream() }
         b.recordButton.setOnClickListener { toggleRecording() }
+        b.infoButton.setOnClickListener { showDeviceInfo() }
 
+        setupStreamSpinner()
+        setupRatioSpinner()
         setupZoom()
         loadCameras()
 
@@ -128,6 +138,76 @@ class MainActivity : AppCompatActivity() {
         b.cameraSpinner.setSelection(next)   // déclenche startLive()
     }
 
+    // ---------------------------------------------------------- Flux (menu)
+
+    private fun setupStreamSpinner() {
+        val adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_item,
+            listOf(getString(R.string.live_stream_main), getString(R.string.live_stream_sub))
+        )
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        b.streamSpinner.adapter = adapter
+        b.streamSpinner.setSelection(prefs.stream - 1)
+        b.streamSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val newStream = position + 1
+                if (newStream != prefs.stream) {
+                    prefs.stream = newStream
+                    startLive()
+                }
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
+
+    // ------------------------------------------------------- Affichage (menu)
+
+    private fun setupRatioSpinner() {
+        val adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_item,
+            listOf(
+                getString(R.string.live_ratio_169),
+                getString(R.string.live_ratio_43),
+                getString(R.string.live_ratio_native)
+            )
+        )
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        b.ratioSpinner.adapter = adapter
+        b.ratioSpinner.setSelection(prefs.ratio)
+        applyRatio(prefs.ratio)
+        b.ratioSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                prefs.ratio = position
+                applyRatio(position)
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
+
+    /** 0 = 16:9 forcé, 1 = 4:3 forcé, 2 = format natif de la caméra. */
+    private fun applyRatio(mode: Int) {
+        b.videoFrame.post {
+            val w = b.videoFrame.width
+            if (w <= 0) return@post
+            val params = b.videoFrame.layoutParams as android.widget.LinearLayout.LayoutParams
+            when (mode) {
+                0 -> {
+                    params.height = (w * 9f / 16f).toInt(); params.weight = 0f
+                    b.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+                }
+                1 -> {
+                    params.height = (w * 3f / 4f).toInt(); params.weight = 0f
+                    b.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+                }
+                else -> {
+                    params.height = 0; params.weight = 1f
+                    b.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                }
+            }
+            b.videoFrame.layoutParams = params
+        }
+    }
+
     // -------------------------------------------------------------- Direct
 
     private var videoWidth = 0
@@ -135,6 +215,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun startLive() {
         if (recorder?.isRecording() == true) stopRecording()   // caméra changée : on ne mélange pas deux flux
+        retryHandler?.removeCallbacksAndMessages(null)
+        retriesLeft = 2
         val url = api!!.liveUrl(currentCam, prefs.stream)
         play(url)
     }
@@ -164,8 +246,19 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                b.loading.visibility = View.GONE
-                showStatus(getString(R.string.err_no_video))
+                // Un enregistreur Hikvision limite le nombre de connexions RTSP
+                // simultanées par caméra ; changer rapidement de caméra peut
+                // heurter cette limite pendant que l'ancienne session se referme.
+                // Deux tentatives espacées de 2 s absorbent ce cas courant.
+                if (retriesLeft > 0) {
+                    retriesLeft--
+                    val h = Handler(Looper.getMainLooper())
+                    retryHandler = h
+                    h.postDelayed({ play(url) }, 2000)
+                } else {
+                    b.loading.visibility = View.GONE
+                    showStatus(getString(R.string.err_live_unavailable))
+                }
             }
 
             override fun onVideoSizeChanged(videoSize: VideoSize) {
@@ -194,14 +287,26 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun toggleStream() {
-        prefs.stream = if (prefs.stream == 1) 2 else 1
-        Toast.makeText(
-            this,
-            if (prefs.stream == 1) "Flux principal" else "Flux secondaire",
-            Toast.LENGTH_SHORT
-        ).show()
-        startLive()
+    // ------------------------------------------------------------- Infos
+
+    private fun showDeviceInfo() {
+        lifecycleScope.launch {
+            when (val r = api!!.deviceInfo()) {
+                is ApiResult.Ok -> {
+                    val fields = api!!.parseDeviceInfo(r.value)
+                    val message = if (fields.isEmpty()) r.value.take(500)
+                    else fields.entries.joinToString("\n") { "${it.key} : ${it.value}" }
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle(R.string.info_title)
+                        .setMessage(message)
+                        .setPositiveButton(R.string.info_close, null)
+                        .show()
+                }
+                is ApiResult.Err -> Toast.makeText(
+                    this@MainActivity, R.string.err_unreachable, Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 
     // ---------------------------------------------------------- Permission
@@ -449,6 +554,7 @@ class MainActivity : AppCompatActivity() {
         // Libère le flux dès que l'écran passe en arrière-plan : inutile de
         // consommer la bande passante et la batterie. Un enregistrement en
         // cours est arrêté plutôt que perdu silencieusement en arrière-plan.
+        retryHandler?.removeCallbacksAndMessages(null)
         if (recorder?.isRecording() == true) stopRecording()
         releasePlayer()
     }
