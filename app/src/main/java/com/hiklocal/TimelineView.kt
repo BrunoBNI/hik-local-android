@@ -148,7 +148,7 @@ class TimelineView @JvmOverloads constructor(
             60_000, 300_000, 600_000, 900_000, 1_800_000,
             3_600_000, 7_200_000, 10_800_000, 21_600_000
         )
-        return candidates.firstOrNull { viewSpanMs / it <= 12 } ?: 21_600_000
+        return candidates.firstOrNull { viewSpanMs / it <= 12 } ?: 21_600_000L
     }
 
     companion object {
