@@ -21,6 +21,8 @@
     <string name="live_fullscreen">Plein écran</string>
     <string name="live_record">Enregistrer</string>
     <string name="live_recording">● Enregistrement…</string>
+    <string name="live_frames_mode">Mode image (sans son)</string>
+    <string name="live_frames_switch">Flux vidéo refusé par cette caméra — passage en mode image</string>
     <string name="live_info">Infos</string>
     <string name="live_stream_main">Flux principal (HD)</string>
     <string name="live_stream_sub">Flux secondaire</string>
