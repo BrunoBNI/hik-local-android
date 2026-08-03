@@ -24,8 +24,10 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import com.hiklocal.databinding.ActivityPlaybackBinding
+import org.videolan.libvlc.LibVLC
+import org.videolan.libvlc.Media
+import org.videolan.libvlc.MediaPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,7 +57,9 @@ class PlaybackActivity : AppCompatActivity() {
     }
 
     private lateinit var b: ActivityPlaybackBinding
-    private var player: ExoPlayer? = null
+    private var player: ExoPlayer? = null      // sert à la lecture d'un extrait téléchargé
+    private var libVlc: LibVLC? = null         // lecture du flux d'archive
+    private var vlcPlayer: MediaPlayer? = null
     private var cameras: List<Camera> = emptyList()
     private var currentCam = 1
 
@@ -193,6 +197,14 @@ class PlaybackActivity : AppCompatActivity() {
         play(url)
     }
 
+    /**
+     * Lecture par LibVLC, et non par le lecteur Android.
+     *
+     * C'est le même principe que la version PC : un moteur fondé sur ffmpeg,
+     * qui accepte les descriptions SDP non strictement conformes de ces
+     * caméras. Le lecteur intégré d'Android, lui, les refuse catégoriquement
+     * ("SDP format error"), ce qui rendait la lecture impossible.
+     */
     private fun play(url: String) {
         stop()
         paused = false
@@ -200,52 +212,59 @@ class PlaybackActivity : AppCompatActivity() {
         b.statusText.visibility = View.GONE
         b.loading.visibility = View.VISIBLE
 
-        val exo = ExoPlayer.Builder(this).build()
-        player = exo
-        b.playerView.player = exo
-        exo.volume = if (muted) 0f else 1f
-        exo.playbackParameters = PlaybackParameters(speed)
+        val options = arrayListOf(
+            "--rtsp-tcp",              // plus fiable que l'UDP en Wi-Fi
+            "--network-caching=1500",  // absorbe les à-coups du réseau
+            "--no-drop-late-frames",
+            "--no-skip-frames"
+        )
+        val vlc = LibVLC(this, options)
+        libVlc = vlc
+        val mp = MediaPlayer(vlc)
+        vlcPlayer = mp
+        mp.attachViews(b.vlcLayout, null, false, false)
 
-        val source = RtspMediaSource.Factory()
-            .setForceUseRtpTcp(true)
-            .setTimeoutMs(15_000)
-            .createMediaSource(MediaItem.fromUri(url))
+        val media = Media(vlc, android.net.Uri.parse(url))
+        media.setHWDecoderEnabled(true, false)
+        mp.media = media
+        media.release()
 
-        exo.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY) b.loading.visibility = View.GONE
-                if (state == Player.STATE_ENDED) showStatus(getString(R.string.err_no_video))
-            }
+        mp.volume = if (muted) 0 else 100
+        mp.rate = speed
 
-            override fun onPlayerError(error: PlaybackException) {
-                val detail = error.cause?.message ?: error.message ?: ""
-                // Même limite que le direct : la bibliothèque RTSP d'Android
-                // refuse la description envoyée par certaines caméras. Plutôt
-                // que d'abandonner, on récupère l'extrait par téléchargement
-                // direct — l'appareil sait le faire sans passer par RTSP.
-                if (detail.contains("fmtp", ignoreCase = true) ||
-                    detail.contains("SDP", ignoreCase = true) ||
-                    detail.contains("IllegalArgument", ignoreCase = true)
-                ) {
+        mp.setEventListener { event ->
+            when (event.type) {
+                MediaPlayer.Event.Playing -> {
+                    b.loading.visibility = View.GONE
+                    b.statusText.visibility = View.GONE
+                }
+                MediaPlayer.Event.EndReached -> showStatus(getString(R.string.err_no_video))
+                MediaPlayer.Event.EncounteredError -> {
+                    // Si même VLC n'y arrive pas, il n'y a probablement pas
+                    // d'enregistrement à cet instant : on tente alors la
+                    // récupération de l'extrait par téléchargement.
                     playByDownload()
-                } else {
-                    showStatus(getString(R.string.err_no_video))
                 }
             }
+        }
 
-            override fun onVideoSizeChanged(videoSize: VideoSize) {
-                videoWidth = videoSize.width
-                videoHeight = videoSize.height
-            }
-        })
-
-        exo.setMediaSource(source)
-        exo.prepare()
-        exo.playWhenReady = true
+        mp.play()
 
         playbackStartWallMs = System.currentTimeMillis()
         playbackStartMinute = minuteOfDay
         startCursor()
+    }
+
+    private fun releaseVlc() {
+        vlcPlayer?.let {
+            it.setEventListener(null)
+            if (it.isPlaying) it.stop()
+            it.detachViews()
+            it.release()
+        }
+        vlcPlayer = null
+        libVlc?.release()
+        libVlc = null
     }
 
     // ------------------------------------ Lecture par téléchargement (repli)
@@ -337,6 +356,7 @@ class PlaybackActivity : AppCompatActivity() {
 
     /** Libère le lecteur sans toucher au reste (curseur, état du téléchargement). */
     private fun releasePlayerOnly() {
+        releaseVlc()
         player?.release()
         player = null
         b.playerView.player = null
@@ -345,15 +365,19 @@ class PlaybackActivity : AppCompatActivity() {
     // -------------------------------------------------- Pause / son / vitesse
 
     private fun togglePause() {
-        val p = player ?: run { playFromCurrent(); return }
+        val vlc = vlcPlayer
+        val exo = player
+        if (vlc == null && exo == null) { playFromCurrent(); return }
         paused = !paused
-        p.playWhenReady = !paused
+        vlc?.let { if (paused) it.pause() else it.play() }
+        exo?.playWhenReady = !paused
         b.pauseButton.text = if (paused) "▶" else "⏸"
         if (paused) stopCursor() else startCursor()
     }
 
     private fun toggleSound() {
         muted = !muted
+        vlcPlayer?.volume = if (muted) 0 else 100
         player?.volume = if (muted) 0f else 1f
         b.pbSoundButton.setImageResource(
             if (muted) android.R.drawable.ic_lock_silent_mode
@@ -377,6 +401,7 @@ class PlaybackActivity : AppCompatActivity() {
         playbackStartWallMs = System.currentTimeMillis()
         speed = next
         b.speedLabel.text = "×" + (if (speed < 1f) speed.toString() else speed.toInt().toString())
+        vlcPlayer?.rate = speed
         player?.playbackParameters = PlaybackParameters(speed)
     }
 
@@ -418,7 +443,10 @@ class PlaybackActivity : AppCompatActivity() {
         }
         val surfaceView = b.playerView.videoSurfaceView as? SurfaceView
         if (surfaceView == null || videoWidth <= 0 || videoHeight <= 0 || player == null) {
-            Toast.makeText(this, "Vidéo pas encore prête", Toast.LENGTH_SHORT).show()
+            // La lecture d'archive passe par LibVLC, dont le rendu n'est pas
+            // capturable par ce mécanisme. L'enregistrement reste disponible
+            // sur le direct.
+            Toast.makeText(this, R.string.err_record_playback, Toast.LENGTH_SHORT).show()
             return
         }
         val newRecorder = VideoRecorder(currentCam)
@@ -515,6 +543,7 @@ class PlaybackActivity : AppCompatActivity() {
         downloadJob = null
         stopCursor()
         b.timeline.setCursor(null)
+        releaseVlc()
         player?.release()
         player = null
         b.playerView.player = null
