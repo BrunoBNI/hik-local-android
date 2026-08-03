@@ -45,6 +45,16 @@
             app:resize_mode="fit"
             app:use_controller="false" />
 
+        <!--
+          Surface de rendu de LibVLC. C'est elle qui affiche réellement la
+          lecture : son moteur (ffmpeg) accepte les flux que le lecteur
+          Android refuse, exactement comme la version PC.
+        -->
+        <org.videolan.libvlc.util.VLCVideoLayout
+            android:id="@+id/vlcLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
         <ProgressBar
             android:id="@+id/loading"
             android:layout_width="46dp"
