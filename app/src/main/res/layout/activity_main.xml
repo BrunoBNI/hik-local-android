@@ -109,17 +109,6 @@
             android:scaleType="fitCenter"
             android:visibility="gone" />
 
-        <!--
-          Surface VLC, utilisée en second recours : quand le lecteur Android
-          refuse le flux, VLC (moteur ffmpeg) l'accepte et restitue la vraie
-          vidéo avec le son, là où le mode image ne donnait que des photos.
-        -->
-        <org.videolan.libvlc.util.VLCVideoLayout
-            android:id="@+id/vlcLayout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
-
         <ProgressBar
             android:id="@+id/loading"
             android:layout_width="46dp"
