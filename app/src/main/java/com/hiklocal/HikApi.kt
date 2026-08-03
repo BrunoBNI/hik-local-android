@@ -142,6 +142,25 @@ class HikApi(
         }
     }
 
+    /**
+     * Photo du flux secondaire : plus petite et bien plus rapide à obtenir,
+     * donc adaptée à un rafraîchissement en continu (mode image par image).
+     */
+    suspend fun snapshotFast(cam: Int, useSubStream: Boolean = true): ByteArray? =
+        withContext(Dispatchers.IO) {
+            val channel = if (useSubStream) "${cam}02" else "${cam}01"
+            try {
+                val req = Request.Builder()
+                    .url(url("/ISAPI/Streaming/channels/$channel/picture"))
+                    .build()
+                client.newCall(req).execute().use { r ->
+                    if (r.isSuccessful) r.body?.bytes() else null
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
+
     // -------------------------------------------------------------- RTSP
 
     /**
