@@ -26,10 +26,10 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="10dp"
-                android:paddingTop="6dp"
-                android:paddingEnd="10dp"
-                android:paddingBottom="6dp">
+                android:paddingStart="8dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="3dp">
 
                 <Spinner
                     android:id="@+id/cameraSpinner"
@@ -139,8 +139,8 @@
 
         <ImageButton
             android:id="@+id/prevButton"
-            android:layout_width="44dp"
-            android:layout_height="62dp"
+            android:layout_width="38dp"
+            android:layout_height="52dp"
             android:layout_gravity="start|center_vertical"
             android:layout_marginStart="8dp"
             android:alpha="0.7"
@@ -150,8 +150,8 @@
 
         <ImageButton
             android:id="@+id/nextButton"
-            android:layout_width="44dp"
-            android:layout_height="62dp"
+            android:layout_width="38dp"
+            android:layout_height="52dp"
             android:layout_gravity="end|center_vertical"
             android:layout_marginEnd="8dp"
             android:alpha="0.7"
@@ -203,15 +203,15 @@
         android:background="@color/panel"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="6dp"
-        android:paddingTop="4dp"
-        android:paddingEnd="6dp"
-        android:paddingBottom="4dp">
+        android:paddingStart="4dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="2dp">
 
         <ImageButton
             android:id="@+id/soundButton"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/live_sound"
@@ -220,7 +220,7 @@
         <ImageButton
             android:id="@+id/snapshotButton"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/live_snapshot"
@@ -229,7 +229,7 @@
         <ImageButton
             android:id="@+id/recordButton"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/live_record"
@@ -238,7 +238,7 @@
         <ImageButton
             android:id="@+id/zoomInButton"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/live_zoom_in"
@@ -247,7 +247,7 @@
         <ImageButton
             android:id="@+id/zoomOutButton"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/live_zoom_out"
@@ -256,7 +256,7 @@
         <ImageButton
             android:id="@+id/zoomResetButton"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/live_zoom_reset"
@@ -265,7 +265,7 @@
         <ImageButton
             android:id="@+id/fullscreenButton"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/live_fullscreen"
