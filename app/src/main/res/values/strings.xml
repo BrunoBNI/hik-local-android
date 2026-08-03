@@ -39,6 +39,7 @@
     <string name="pb_fwd1">+1 min</string>
     <string name="pb_fwd5">+5 min</string>
     <string name="pb_hint">Faites glisser la frise pour choisir l\'heure, puis lancez la lecture.</string>
+    <string name="pb_full_day">Journée entière</string>
 
     <string name="err_unreachable">Appareil injoignable. Vérifiez l\'adresse et le réseau Wi-Fi.</string>
     <string name="err_credentials">Nom d\'utilisateur ou mot de passe incorrect.</string>
