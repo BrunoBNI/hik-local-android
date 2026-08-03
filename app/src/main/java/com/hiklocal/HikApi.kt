@@ -161,6 +161,9 @@ class HikApi(
             }
         }
 
+    /** Résultat d'un téléchargement d'extrait, avec le détail en cas d'échec. */
+    data class SegmentResult(val ok: Boolean, val detail: String = "")
+
     /**
      * Télécharge un extrait d'enregistrement entre deux instants, via HTTP et
      * non RTSP.
@@ -168,9 +171,13 @@ class HikApi(
      * C'est le contournement de la limite du lecteur Android, qui refuse la
      * description SDP envoyée par ces caméras ("SDP format error"). Ici, aucun
      * RTSP n'est négocié : l'appareil renvoie directement le fichier. Il
-     * annonce lui-même savoir le faire (isSupportDownloadbyTime), et l'adresse
-     * de lecture est construite à la main, sans dépendre de la recherche ISAPI
-     * qui, elle, est verrouillée sur ce firmware.
+     * annonce lui-même savoir le faire (isSupportDownloadbyTime).
+     *
+     * Le format exact attendu varie selon les firmwares : certains exigent les
+     * paramètres name et size dans l'adresse de lecture, d'autres les
+     * refusent. On essaie donc plusieurs variantes, et la réponse de
+     * l'appareil est remontée telle quelle en cas d'échec — c'est ce qui a
+     * permis de débloquer les mêmes impasses côté PC.
      */
     suspend fun downloadSegment(
         cam: Int,
@@ -178,41 +185,59 @@ class HikApi(
         endStamp: String,
         target: java.io.File,
         onProgress: (bytes: Long) -> Unit
-    ): Boolean = withContext(Dispatchers.IO) {
-        // Le & doit être échappé : cette adresse voyage à l'intérieur d'un XML.
-        val playbackUri = "rtsp://$host/Streaming/tracks/${cam}01" +
+    ): SegmentResult = withContext(Dispatchers.IO) {
+        val track = "${cam}01"
+        val base = "rtsp://$host/Streaming/tracks/$track" +
             "?starttime=$startStamp&amp;endtime=$endStamp"
-        val xml = "<downloadRequest><playbackURI>$playbackUri</playbackURI></downloadRequest>"
-        try {
-            val req = Request.Builder()
-                .url(url("/ISAPI/ContentMgmt/download"))
-                .post(xml.toRequestBody("application/xml".toMediaType()))
-                .build()
-            client.newCall(req).execute().use { r ->
-                if (!r.isSuccessful) return@withContext false
-                val body = r.body ?: return@withContext false
 
-                // Une réponse XML signifie un refus de l'appareil, pas une vidéo.
-                val type = r.header("Content-Type").orEmpty()
-                if (type.contains("xml", ignoreCase = true)) return@withContext false
+        // Variantes connues du paramètre d'adresse de lecture.
+        val uris = listOf(
+            base,
+            "$base&amp;name=ch${"%02d".format(cam)}_00000000000000000&amp;size=1073741824",
+            "$base&amp;name=&amp;size="
+        )
 
-                target.outputStream().use { out ->
-                    val buf = ByteArray(64 * 1024)
-                    var total = 0L
-                    val input = body.byteStream()
-                    while (true) {
-                        val n = input.read(buf)
-                        if (n <= 0) break
-                        out.write(buf, 0, n)
-                        total += n
-                        onProgress(total)
+        val errors = StringBuilder()
+        for ((index, playbackUri) in uris.withIndex()) {
+            val xml = "<downloadRequest><playbackURI>$playbackUri</playbackURI></downloadRequest>"
+            try {
+                val req = Request.Builder()
+                    .url(url("/ISAPI/ContentMgmt/download"))
+                    .post(xml.toRequestBody("application/xml".toMediaType()))
+                    .build()
+                client.newCall(req).execute().use { r ->
+                    val type = r.header("Content-Type").orEmpty()
+                    if (!r.isSuccessful || type.contains("xml", ignoreCase = true)) {
+                        val body = r.body?.string().orEmpty()
+                        val status = Regex("<statusString>(.*?)</statusString>")
+                            .find(body)?.groupValues?.get(1)
+                        val sub = Regex("<subStatusCode>(.*?)</subStatusCode>")
+                            .find(body)?.groupValues?.get(1)
+                        val msg = listOfNotNull(status, sub).joinToString(" / ")
+                            .ifEmpty { body.take(120) }
+                        errors.append("v${index + 1}: HTTP ${r.code} $msg\n")
+                        return@use
+                    }
+                    // Réponse binaire : c'est bien une vidéo.
+                    target.outputStream().use { out ->
+                        val buf = ByteArray(64 * 1024)
+                        var total = 0L
+                        val input = r.body!!.byteStream()
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n <= 0) break
+                            out.write(buf, 0, n)
+                            total += n
+                            onProgress(total)
+                        }
                     }
                 }
-                target.length() > 10_000       // en deçà, ce n'est pas une vidéo
+            } catch (e: Exception) {
+                errors.append("v${index + 1}: ${e.message}\n")
             }
-        } catch (e: Exception) {
-            false
+            if (target.length() > 10_000) return@withContext SegmentResult(true)
         }
+        SegmentResult(false, errors.toString().trim())
     }
 
     // -------------------------------------------------------------- RTSP
