@@ -44,6 +44,11 @@ import kotlin.math.min
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        /** Recul progressif entre les tentatives de reconnexion du direct. */
+        private val RETRY_DELAYS_MS = longArrayOf(1500, 3000, 6000)
+    }
+
     private lateinit var b: ActivityMainBinding
     private lateinit var prefs: Prefs
     private var player: ExoPlayer? = null
@@ -212,19 +217,30 @@ class MainActivity : AppCompatActivity() {
 
     private var videoWidth = 0
     private var videoHeight = 0
+    private var pendingUrl: String? = null
 
     private fun startLive() {
         if (recorder?.isRecording() == true) stopRecording()   // caméra changée : on ne mélange pas deux flux
         retryHandler?.removeCallbacksAndMessages(null)
-        retriesLeft = 2
+        retriesLeft = RETRY_DELAYS_MS.size
         val url = api!!.liveUrl(currentCam, prefs.stream)
-        play(url)
-    }
-
-    private fun play(url: String) {
+        pendingUrl = url
         releasePlayer()
         showStatus(null)
         b.loading.visibility = View.VISIBLE
+        // Laisse le temps à la connexion précédente de se refermer côté
+        // réseau avant d'en ouvrir une nouvelle : beaucoup d'enregistreurs
+        // Hikvision limitent le nombre de sessions RTSP simultanées, et une
+        // reconnexion trop immédiate peut être refusée pendant que
+        // l'ancienne session se termine encore.
+        val h = Handler(Looper.getMainLooper())
+        retryHandler = h
+        h.postDelayed({ play(url) }, 400)
+    }
+
+    private fun play(url: String) {
+        if (url != pendingUrl) return   // une caméra plus récente a été sélectionnée entre-temps
+        releasePlayer()
 
         val exo = ExoPlayer.Builder(this).build()
         player = exo
@@ -242,22 +258,27 @@ class MainActivity : AppCompatActivity() {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
                     b.loading.visibility = View.GONE
+                    showStatus(null)   // efface un éventuel message "Reconnexion…" resté affiché
                 }
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                // Un enregistreur Hikvision limite le nombre de connexions RTSP
-                // simultanées par caméra ; changer rapidement de caméra peut
-                // heurter cette limite pendant que l'ancienne session se referme.
-                // Deux tentatives espacées de 2 s absorbent ce cas courant.
+                val detail = error.cause?.message ?: error.message ?: "cause inconnue"
                 if (retriesLeft > 0) {
+                    val attempt = RETRY_DELAYS_MS.size - retriesLeft + 1
+                    val delay = RETRY_DELAYS_MS[RETRY_DELAYS_MS.size - retriesLeft]
                     retriesLeft--
+                    showStatus("Reconnexion (tentative $attempt/${RETRY_DELAYS_MS.size})…")
                     val h = Handler(Looper.getMainLooper())
                     retryHandler = h
-                    h.postDelayed({ play(url) }, 2000)
+                    h.postDelayed({ play(url) }, delay)
                 } else {
                     b.loading.visibility = View.GONE
-                    showStatus(getString(R.string.err_live_unavailable))
+                    // Le détail technique aide à comprendre une panne persistante
+                    // (limite de connexions simultanées, canal inexistant, etc.) :
+                    // un tapotement relance une tentative complète.
+                    showStatus(getString(R.string.err_live_unavailable) + "\n" + detail +
+                        "\n(toucher l'écran pour réessayer)")
                 }
             }
 
@@ -545,6 +566,7 @@ class MainActivity : AppCompatActivity() {
         b.statusText.text = message.orEmpty()
         b.statusText.visibility = if (message == null) View.GONE else View.VISIBLE
         if (message != null) b.loading.visibility = View.GONE
+        b.statusText.setOnClickListener { if (message != null) startLive() }
     }
 
     // ------------------------------------------------------- Cycle de vie
