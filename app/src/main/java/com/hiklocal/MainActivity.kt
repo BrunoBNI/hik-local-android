@@ -221,6 +221,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startLive() {
         if (recorder?.isRecording() == true) stopRecording()   // caméra changée : on ne mélange pas deux flux
+        stopFrameMode()          // on retente toujours la vidéo d'abord
         retryHandler?.removeCallbacksAndMessages(null)
         retriesLeft = RETRY_DELAYS_MS.size
         val url = api!!.liveUrl(currentCam, prefs.stream)
@@ -264,6 +265,23 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPlayerError(error: PlaybackException) {
                 val detail = error.cause?.message ?: error.message ?: "cause inconnue"
+
+                // Certains firmwares Hikvision envoient une description SDP que
+                // la bibliothèque RTSP d'Android rejette ("missing attribute
+                // fmtp"). Le flux est pourtant bien là — ffmpeg le lit sans
+                // problème, c'est pourquoi la version PC n'a jamais eu ce souci.
+                // Inutile d'insister avec le lecteur vidéo dans ce cas : on
+                // bascule directement sur les images JPEG de l'appareil, la
+                // même source que la mosaïque, qui fonctionne pour toutes les
+                // caméras.
+                if (detail.contains("fmtp", ignoreCase = true) ||
+                    detail.contains("SDP", ignoreCase = true) ||
+                    detail.contains("IllegalArgument", ignoreCase = true)
+                ) {
+                    startFrameMode()
+                    return
+                }
+
                 if (retriesLeft > 0) {
                     val attempt = RETRY_DELAYS_MS.size - retriesLeft + 1
                     val delay = RETRY_DELAYS_MS[RETRY_DELAYS_MS.size - retriesLeft]
@@ -273,12 +291,9 @@ class MainActivity : AppCompatActivity() {
                     retryHandler = h
                     h.postDelayed({ play(url) }, delay)
                 } else {
-                    b.loading.visibility = View.GONE
-                    // Le détail technique aide à comprendre une panne persistante
-                    // (limite de connexions simultanées, canal inexistant, etc.) :
-                    // un tapotement relance une tentative complète.
-                    showStatus(getString(R.string.err_live_unavailable) + "\n" + detail +
-                        "\n(toucher l'écran pour réessayer)")
+                    // Dernier recours : plutôt qu'un écran d'erreur, on montre
+                    // l'image. Une vue qui marche vaut mieux qu'un message.
+                    startFrameMode()
                 }
             }
 
@@ -398,6 +413,12 @@ class MainActivity : AppCompatActivity() {
             stopRecording()
             return
         }
+        if (frameModeActive) {
+            // L'enregistrement capture le rendu du lecteur vidéo, absent en
+            // mode image. La photo (📷) reste disponible, elle.
+            Toast.makeText(this, "Enregistrement indisponible en mode image", Toast.LENGTH_SHORT).show()
+            return
+        }
         val surfaceView = b.playerView.videoSurfaceView as? SurfaceView
         if (surfaceView == null || videoWidth <= 0 || videoHeight <= 0) {
             Toast.makeText(this, "Vidéo pas encore prête", Toast.LENGTH_SHORT).show()
@@ -465,6 +486,62 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ------------------------------------------------- Mode image (repli)
+
+    /**
+     * Affichage par images successives, quand le lecteur vidéo refuse le flux
+     * RTSP. Les images viennent de l'appareil en JPEG (même mécanisme que la
+     * mosaïque, qui n'a jamais posé problème). Moins fluide qu'une vraie
+     * vidéo et sans son, mais l'image s'affiche — sur toutes les caméras.
+     */
+    private var frameJob: kotlinx.coroutines.Job? = null
+    private var frameModeActive = false
+
+    private fun startFrameMode() {
+        if (frameModeActive) return
+        frameModeActive = true
+        retryHandler?.removeCallbacksAndMessages(null)
+        releasePlayer()
+        showStatus(null)
+        b.loading.visibility = View.VISIBLE
+        b.frameImage.visibility = View.VISIBLE
+        b.modeIndicator.visibility = View.VISIBLE
+        Toast.makeText(this, R.string.live_frames_switch, Toast.LENGTH_SHORT).show()
+
+        val camAtStart = currentCam
+        frameJob?.cancel()
+        frameJob = lifecycleScope.launch {
+            var firstImage = true
+            while (true) {
+                if (camAtStart != currentCam) break   // caméra changée entre-temps
+                val bytes = api?.snapshotFast(camAtStart, useSubStream = prefs.stream == 2)
+                if (bytes != null) {
+                    val bmp = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    if (bmp != null) {
+                        b.frameImage.setImageBitmap(bmp)
+                        if (firstImage) {
+                            b.loading.visibility = View.GONE
+                            videoWidth = bmp.width
+                            videoHeight = bmp.height
+                            firstImage = false
+                        }
+                    }
+                }
+                // ~3 images/seconde : compromis entre fluidité perçue et
+                // charge réseau, l'appareil devant produire chaque JPEG.
+                kotlinx.coroutines.delay(330)
+            }
+        }
+    }
+
+    private fun stopFrameMode() {
+        frameJob?.cancel()
+        frameJob = null
+        frameModeActive = false
+        b.frameImage.visibility = View.GONE
+        b.modeIndicator.visibility = View.GONE
+    }
+
     // ------------------------------------------------------ Zoom / plein écran
 
     private var scale = 1f
@@ -524,12 +601,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyTransform() {
-        b.playerView.scaleX = scale
-        b.playerView.scaleY = scale
-        b.playerView.pivotX = 0f
-        b.playerView.pivotY = 0f
-        b.playerView.translationX = transX
-        b.playerView.translationY = transY
+        // Le zoom doit suivre la vue réellement affichée : lecteur vidéo en
+        // temps normal, image en mode dégradé.
+        for (v in listOf(b.playerView, b.frameImage)) {
+            v.scaleX = scale
+            v.scaleY = scale
+            v.pivotX = 0f
+            v.pivotY = 0f
+            v.translationX = transX
+            v.translationY = transY
+        }
     }
 
     private var isFullscreenOn = false
@@ -578,6 +659,7 @@ class MainActivity : AppCompatActivity() {
         // cours est arrêté plutôt que perdu silencieusement en arrière-plan.
         retryHandler?.removeCallbacksAndMessages(null)
         if (recorder?.isRecording() == true) stopRecording()
+        stopFrameMode()
         releasePlayer()
     }
 
