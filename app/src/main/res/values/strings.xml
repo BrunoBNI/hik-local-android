@@ -21,6 +21,14 @@
     <string name="live_fullscreen">Plein écran</string>
     <string name="live_record">Enregistrer</string>
     <string name="live_recording">● Enregistrement…</string>
+    <string name="live_info">Infos</string>
+    <string name="live_stream_main">Flux principal (HD)</string>
+    <string name="live_stream_sub">Flux secondaire</string>
+    <string name="live_ratio_169">Affichage 16:9</string>
+    <string name="live_ratio_43">Affichage 4:3</string>
+    <string name="live_ratio_native">Format natif</string>
+    <string name="info_title">Informations de l\'appareil</string>
+    <string name="info_close">Fermer</string>
 
     <string name="pb_play">Lire</string>
     <string name="pb_back5">−5 min</string>
@@ -33,6 +41,7 @@
     <string name="err_credentials">Nom d\'utilisateur ou mot de passe incorrect.</string>
     <string name="err_no_camera">Aucune caméra active sur cet appareil.</string>
     <string name="err_no_video">Pas d\'enregistrement lisible à cette heure.</string>
+    <string name="err_live_unavailable">Flux indisponible pour cette caméra.</string>
     <string name="ptz_unsupported">Cette caméra ne pivote pas.</string>
 
     <string name="tab_live">🎥 Direct</string>
