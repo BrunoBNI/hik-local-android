@@ -160,6 +160,22 @@
             android:src="@android:drawable/ic_media_next" />
 
         <TextView
+            android:id="@+id/camNameOverlay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="10dp"
+            android:background="#99000000"
+            android:paddingStart="10dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="3dp"
+            android:textColor="@color/text"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/modeIndicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
