@@ -526,6 +526,11 @@ class MainActivity : AppCompatActivity() {
      */
     private fun startVlcMode() {
         if (vlcModeActive) return
+        // Toujours repartir d'une surface propre : une session précédente mal
+        // libérée laisse son image à l'écran, et deux flux se superposent
+        // quand on enchaîne les caméras.
+        releaseVlc()
+        b.vlcLayout.removeAllViews()
         vlcModeActive = true
         retryHandler?.removeCallbacksAndMessages(null)
         releasePlayer()
@@ -592,6 +597,7 @@ class MainActivity : AppCompatActivity() {
         libVlc?.release()
         libVlc = null
         vlcModeActive = false
+        b.vlcLayout.removeAllViews()   // supprime la surface restée à l'écran
         b.vlcLayout.visibility = View.GONE
     }
 
@@ -667,11 +673,17 @@ class MainActivity : AppCompatActivity() {
         var lastX = 0f
         var lastY = 0f
 
+        var downX = 0f
+        var downY = 0f
+        var downTime = 0L
+
         b.videoFrame.setOnTouchListener { _, event ->
             scaleDetector.onTouchEvent(event)
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     lastX = event.x; lastY = event.y
+                    downX = event.x; downY = event.y
+                    downTime = System.currentTimeMillis()
                     showArrows()     // un contact rappelle les commandes
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -680,6 +692,21 @@ class MainActivity : AppCompatActivity() {
                         transY += event.y - lastY
                         lastX = event.x; lastY = event.y
                         applyTransform()
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    // Glisser horizontalement change de caméra. Indispensable
+                    // en paysage, où les flèches s'effacent : viser un bouton
+                    // masqué demandait deux gestes au lieu d'un.
+                    val dx = event.x - downX
+                    val dy = event.y - downY
+                    val quick = System.currentTimeMillis() - downTime < 700
+                    val threshold = b.videoFrame.width * 0.18f
+                    if (scale <= 1.02f && quick &&
+                        kotlin.math.abs(dx) > threshold &&
+                        kotlin.math.abs(dx) > kotlin.math.abs(dy) * 2
+                    ) {
+                        stepCamera(if (dx < 0) 1 else -1)   // vers la gauche = suivante
                     }
                 }
             }
@@ -794,8 +821,13 @@ class MainActivity : AppCompatActivity() {
         val mp = vlcPlayer ?: return
         mp.detachViews()
         b.vlcLayout.post {
-            mp.attachViews(b.vlcLayout, null, false, false)
-            applyVlcAspect()
+            // La surface a pu changer entre-temps (caméra suivante, arrêt) :
+            // sans cette vérification, l'ancien lecteur se rebrancherait et
+            // son image se superposerait à la nouvelle.
+            if (vlcPlayer === mp && vlcModeActive) {
+                mp.attachViews(b.vlcLayout, null, false, false)
+                applyVlcAspect()
+            }
         }
     }
 
