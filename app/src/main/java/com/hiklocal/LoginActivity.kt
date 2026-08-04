@@ -6,6 +6,7 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.hiklocal.databinding.ActivityLoginBinding
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
@@ -22,7 +23,27 @@ class LoginActivity : AppCompatActivity() {
         b.hostInput.setText(prefs.host)
         b.userInput.setText(prefs.user)
         b.rememberBox.isChecked = prefs.remember
-        if (prefs.remember) b.passwordInput.setText(prefs.password)
+
+        val hasStoredPassword = prefs.remember && prefs.password.isNotEmpty()
+        if (hasStoredPassword) {
+            b.passwordInput.setText(prefs.password)
+            // Un mot de passe déjà enregistré ne doit pas pouvoir être révélé :
+            // quiconque prend l'appareil en main pourrait le lire en clair.
+            // L'œil de révélation n'a de sens que lors d'une saisie, pour
+            // vérifier ce que l'on tape.
+            b.passwordLayout.endIconMode = TextInputLayout.END_ICON_NONE
+        } else {
+            b.passwordLayout.endIconMode = TextInputLayout.END_ICON_PASSWORD_TOGGLE
+        }
+
+        // Dès que l'utilisateur modifie le champ, il saisit à nouveau : l'œil
+        // redevient utile.
+        b.passwordInput.setOnFocusChangeListener { _, focused ->
+            if (focused && hasStoredPassword) {
+                b.passwordInput.setText("")
+                b.passwordLayout.endIconMode = TextInputLayout.END_ICON_PASSWORD_TOGGLE
+            }
+        }
 
         b.loginButton.setOnClickListener { connect() }
     }
