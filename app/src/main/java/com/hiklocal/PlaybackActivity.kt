@@ -232,6 +232,10 @@ class PlaybackActivity : AppCompatActivity() {
         libVlc = vlc
         val mp = MediaPlayer(vlc)
         vlcPlayer = mp
+        // Exclusivité des surfaces : laisser le lecteur natif visible sous
+        // celle de VLC ferait apparaître son image figée par-dessus le flux.
+        b.playerView.visibility = View.GONE
+        b.vlcLayout.visibility = View.VISIBLE
         mp.attachViews(b.vlcLayout, null, false, false)
 
         val media = Media(vlc, android.net.Uri.parse(url))
@@ -352,6 +356,8 @@ class PlaybackActivity : AppCompatActivity() {
 
         val exo = ExoPlayer.Builder(this).build()
         player = exo
+        b.vlcLayout.visibility = View.GONE
+        b.playerView.visibility = View.VISIBLE
         b.playerView.player = exo
         exo.volume = if (muted) 0f else 1f
         exo.playbackParameters = PlaybackParameters(speed)
