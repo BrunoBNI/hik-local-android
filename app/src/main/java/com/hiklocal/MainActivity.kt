@@ -526,11 +526,12 @@ class MainActivity : AppCompatActivity() {
      */
     private fun startVlcMode() {
         if (vlcModeActive) return
-        // Toujours repartir d'une surface propre : une session précédente mal
+        // Toujours repartir d'une session propre : une session précédente mal
         // libérée laisse son image à l'écran, et deux flux se superposent
-        // quand on enchaîne les caméras.
+        // quand on enchaîne les caméras. detachViews() suffit : vider la vue
+        // détruirait les surfaces internes que VLCVideoLayout crée lui-même,
+        // et le rattachement suivant échouerait.
         releaseVlc()
-        b.vlcLayout.removeAllViews()
         vlcModeActive = true
         retryHandler?.removeCallbacksAndMessages(null)
         releasePlayer()
@@ -546,35 +547,41 @@ class MainActivity : AppCompatActivity() {
             "--no-drop-late-frames",
             "--no-skip-frames"
         )
-        val vlc = LibVLC(this, options)
-        libVlc = vlc
-        val mp = MediaPlayer(vlc)
-        vlcPlayer = mp
-        mp.attachViews(b.vlcLayout, null, false, false)
+        // Un incident du moteur vidéo ne doit jamais emporter l'application :
+        // en cas d'échec, on retombe sur le mode image, qui a toujours
+        // fonctionné sur toutes les caméras.
+        try {
+            val vlc = LibVLC(this, options)
+            libVlc = vlc
+            val mp = MediaPlayer(vlc)
+            vlcPlayer = mp
+            mp.attachViews(b.vlcLayout, null, false, false)
 
-        val media = Media(vlc, android.net.Uri.parse(url))
-        media.setHWDecoderEnabled(true, false)
-        mp.media = media
-        media.release()
-        mp.volume = if (muted) 0 else 100
+            val media = Media(vlc, android.net.Uri.parse(url))
+            media.setHWDecoderEnabled(true, false)
+            mp.media = media
+            media.release()
+            mp.volume = if (muted) 0 else 100
 
-        mp.setEventListener { event ->
-            when (event.type) {
-                MediaPlayer.Event.Playing -> {
-                    b.loading.visibility = View.GONE
-                    showStatus(null)
-                }
-                // Le format ne peut être imposé qu'une fois la sortie créée.
-                MediaPlayer.Event.Vout -> applyVlcAspect()
-                MediaPlayer.Event.EncounteredError -> {
-                    // Filet de sécurité : les images JPEG, qui ont toujours
-                    // fonctionné sur toutes les caméras.
-                    releaseVlc()
-                    startFrameMode()
+            mp.setEventListener { event ->
+                when (event.type) {
+                    MediaPlayer.Event.Playing -> {
+                        b.loading.visibility = View.GONE
+                        showStatus(null)
+                    }
+                    // Le format ne peut être imposé qu'une fois la sortie créée.
+                    MediaPlayer.Event.Vout -> applyVlcAspect()
+                    MediaPlayer.Event.EncounteredError -> {
+                        releaseVlc()
+                        startFrameMode()
+                    }
                 }
             }
+            mp.play()
+        } catch (e: Throwable) {
+            releaseVlc()
+            startFrameMode()
         }
-        mp.play()
     }
 
     /** Impose le format : ces caméras encodent en 960x1080 anamorphique. */
@@ -588,16 +595,19 @@ class MainActivity : AppCompatActivity() {
     private fun releaseVlc() {
         val mp = vlcPlayer
         if (mp != null) {
-            mp.setEventListener(null as MediaPlayer.EventListener?)
-            if (mp.isPlaying) mp.stop()
-            mp.detachViews()
-            mp.release()
+            try {
+                mp.setEventListener(null as MediaPlayer.EventListener?)
+                if (mp.isPlaying) mp.stop()
+                mp.detachViews()
+                mp.release()
+            } catch (e: Throwable) {
+                // Libération partielle : sans importance, on repart à neuf.
+            }
         }
         vlcPlayer = null
-        libVlc?.release()
+        try { libVlc?.release() } catch (e: Throwable) { }
         libVlc = null
         vlcModeActive = false
-        b.vlcLayout.removeAllViews()   // supprime la surface restée à l'écran
         b.vlcLayout.visibility = View.GONE
     }
 
@@ -819,14 +829,19 @@ class MainActivity : AppCompatActivity() {
      */
     private fun reattachVlcSurface() {
         val mp = vlcPlayer ?: return
-        mp.detachViews()
+        try { mp.detachViews() } catch (e: Throwable) { return }
         b.vlcLayout.post {
             // La surface a pu changer entre-temps (caméra suivante, arrêt) :
             // sans cette vérification, l'ancien lecteur se rebrancherait et
             // son image se superposerait à la nouvelle.
             if (vlcPlayer === mp && vlcModeActive) {
-                mp.attachViews(b.vlcLayout, null, false, false)
-                applyVlcAspect()
+                try {
+                    mp.attachViews(b.vlcLayout, null, false, false)
+                    applyVlcAspect()
+                } catch (e: Throwable) {
+                    releaseVlc()
+                    startFrameMode()
+                }
             }
         }
     }
