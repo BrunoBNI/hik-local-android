@@ -238,6 +238,7 @@ class MainActivity : AppCompatActivity() {
     private var pendingUrl: String? = null
 
     private fun startLive() {
+        b.camNameOverlay.text = camLabelOf(currentCam)   // suit la caméra affichée
         if (recorder?.isRecording() == true) stopRecording()   // caméra changée : on ne mélange pas deux flux
         releaseVlc()             // on repart du lecteur natif à chaque fois
         stopFrameMode()          // on retente toujours la vidéo d'abord
@@ -733,9 +734,9 @@ class MainActivity : AppCompatActivity() {
     private var isFullscreenOn = false
 
     /**
-     * En paysage, la vidéo prend tout l'écran et l'interface s'efface : c'est
-     * l'orientation qu'on choisit justement pour voir grand. En portrait, elle
-     * garde son cadre au format choisi, sous les menus.
+     * En paysage, la vidéo occupe l'écran dans un cadre 16:9 centré et
+     * l'interface s'efface : seul le nom de la caméra reste incrusté. En
+     * portrait, elle garde son cadre au format choisi, sous les menus.
      */
     private fun applyLayout() {
         val landscape = resources.configuration.orientation ==
@@ -745,6 +746,8 @@ class MainActivity : AppCompatActivity() {
         b.topbar.root.visibility = if (immersive) View.GONE else View.VISIBLE
         b.headerRow.visibility = if (immersive) View.GONE else View.VISIBLE
         b.toolbarRow.visibility = if (immersive) View.GONE else View.VISIBLE
+        b.camNameOverlay.visibility = if (immersive) View.VISIBLE else View.GONE
+        b.camNameOverlay.text = camLabelOf(currentCam)
 
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         if (immersive) {
@@ -752,17 +755,53 @@ class MainActivity : AppCompatActivity() {
             controller.hide(WindowInsetsCompat.Type.systemBars())
             controller.systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            (b.videoFrame.layoutParams as android.widget.LinearLayout.LayoutParams).apply {
-                height = 0; weight = 1f
-            }.also { b.videoFrame.layoutParams = it }
-            applyVlcAspect()
+
+            // Cadre 16:9 aussi grand que possible, centré : remplir tout
+            // l'écran déformerait l'image, la dalle n'étant pas en 16:9.
+            val w = resources.displayMetrics.widthPixels
+            val h = resources.displayMetrics.heightPixels
+            val params = b.videoFrame.layoutParams as android.widget.LinearLayout.LayoutParams
+            if (w * 9 > h * 16) {          // écran plus large que du 16:9
+                params.height = h
+                params.width = h * 16 / 9
+            } else {
+                params.width = w
+                params.height = w * 9 / 16
+            }
+            params.weight = 0f
+            params.gravity = android.view.Gravity.CENTER
+            b.videoFrame.layoutParams = params
         } else {
             WindowCompat.setDecorFitsSystemWindows(window, true)
             controller.show(WindowInsetsCompat.Type.systemBars())
+            val params = b.videoFrame.layoutParams as android.widget.LinearLayout.LayoutParams
+            params.width = android.widget.LinearLayout.LayoutParams.MATCH_PARENT
+            params.gravity = android.view.Gravity.NO_GRAVITY
+            b.videoFrame.layoutParams = params
             applyRatio(prefs.ratio)   // rétablit le cadre au format choisi
         }
+
+        reattachVlcSurface()
         showArrows()                  // les flèches réapparaissent au changement
     }
+
+    /**
+     * À la rotation, l'activité n'est pas recréée mais la surface de rendu de
+     * VLC est détruite : sans ce ré-attachement, l'image reste figée sur la
+     * dernière trame et le format revient à celui de la source.
+     */
+    private fun reattachVlcSurface() {
+        val mp = vlcPlayer ?: return
+        mp.detachViews()
+        b.vlcLayout.post {
+            mp.attachViews(b.vlcLayout, null, false, false)
+            applyVlcAspect()
+        }
+    }
+
+    /** « Salon (4) » : nom donné dans le DVR, suivi du rang de la caméra. */
+    private fun camLabelOf(id: Int): String =
+        cameras.firstOrNull { it.id == id }?.label ?: "Caméra $id"
 
     private fun toggleFullscreen() {
         isFullscreenOn = !isFullscreenOn
