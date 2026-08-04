@@ -262,6 +262,7 @@ class MainActivity : AppCompatActivity() {
     private fun play(url: String) {
         if (url != pendingUrl) return   // une caméra plus récente a été sélectionnée entre-temps
         releasePlayer()
+        showOnlyNative()
 
         val exo = ExoPlayer.Builder(this).build()
         player = exo
@@ -512,6 +513,32 @@ class MainActivity : AppCompatActivity() {
 
     // ------------------------------------------------- Mode image (repli)
 
+    // --------------------------------------------- Surfaces d'affichage
+
+    /**
+     * Trois surfaces se partagent la zone vidéo : le lecteur natif, celle de
+     * VLC et l'image de repli. Elles doivent être strictement exclusives —
+     * laisser deux surfaces vidéo actives fait apparaître l'image figée de
+     * l'une par-dessus le flux de l'autre.
+     */
+    private fun showOnlyNative() {
+        b.playerView.visibility = View.VISIBLE
+        b.vlcLayout.visibility = View.GONE
+        b.frameImage.visibility = View.GONE
+    }
+
+    private fun showOnlyVlc() {
+        b.playerView.visibility = View.GONE
+        b.vlcLayout.visibility = View.VISIBLE
+        b.frameImage.visibility = View.GONE
+    }
+
+    private fun showOnlyFrames() {
+        b.playerView.visibility = View.GONE
+        b.vlcLayout.visibility = View.GONE
+        b.frameImage.visibility = View.VISIBLE
+    }
+
     // --------------------------------------- Vidéo par VLC (moteur ffmpeg)
 
     private var libVlc: LibVLC? = null
@@ -538,7 +565,7 @@ class MainActivity : AppCompatActivity() {
         stopFrameMode()
         showStatus(null)
         b.loading.visibility = View.VISIBLE
-        b.vlcLayout.visibility = View.VISIBLE
+        showOnlyVlc()
 
         val url = api!!.liveUrl(currentCam, prefs.stream)
         val options = arrayListOf(
@@ -608,7 +635,6 @@ class MainActivity : AppCompatActivity() {
         try { libVlc?.release() } catch (e: Throwable) { }
         libVlc = null
         vlcModeActive = false
-        b.vlcLayout.visibility = View.GONE
     }
 
     /**
@@ -627,7 +653,7 @@ class MainActivity : AppCompatActivity() {
         releasePlayer()
         showStatus(null)
         b.loading.visibility = View.VISIBLE
-        b.frameImage.visibility = View.VISIBLE
+        showOnlyFrames()
         b.modeIndicator.visibility = View.VISIBLE
         Toast.makeText(this, R.string.live_frames_switch, Toast.LENGTH_SHORT).show()
 
@@ -661,7 +687,6 @@ class MainActivity : AppCompatActivity() {
         frameJob?.cancel()
         frameJob = null
         frameModeActive = false
-        b.frameImage.visibility = View.GONE
         b.modeIndicator.visibility = View.GONE
     }
 
